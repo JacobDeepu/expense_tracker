@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/local/database.dart';
-import '../../../../data/local/tables.dart';
 import '../../data/transactions_repository.dart';
 
 class EditTransactionSheet extends ConsumerStatefulWidget {

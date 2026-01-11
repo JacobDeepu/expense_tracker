@@ -8,6 +8,7 @@ import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../onboarding/data/recurring_rules_repository.dart';
+import '../providers/dashboard_providers.dart';
 import '../../transactions/presentation/widgets/edit_transaction_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
