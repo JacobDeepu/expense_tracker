@@ -4,9 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/insights/presentation/insights_screen.dart';
-import '../../features/onboarding/presentation/budget_setup_screen.dart';
-import '../../features/onboarding/presentation/onboarding_screen.dart';
-import '../../features/onboarding/presentation/reminder_time_screen.dart';
+import '../../features/onboarding/presentation/onboarding_flow_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/transactions/presentation/add_transaction_sheet.dart';
 import '../../features/transactions/presentation/transactions_screen.dart';
@@ -22,11 +20,6 @@ class AppRouter {
     return isFirstRun;
   }
 
-  static Future<void> _markOnboardingComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_firstRunKey, false);
-  }
-
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: RouteNames.dashboard,
@@ -34,19 +27,13 @@ class AppRouter {
         // Check if this is the first run
         final isFirstRun = await _isFirstRun();
 
-        // If first run and not on onboarding/budget/reminder, redirect to onboarding
-        if (isFirstRun &&
-            state.matchedLocation != RouteNames.onboarding &&
-            state.matchedLocation != RouteNames.budgetSetup &&
-            state.matchedLocation != RouteNames.reminderTime) {
+        // If first run and not on onboarding, redirect to onboarding
+        if (isFirstRun && state.matchedLocation != RouteNames.onboarding) {
           return RouteNames.onboarding;
         }
 
         // If not first run and on onboarding, redirect to dashboard
-        if (!isFirstRun &&
-            (state.matchedLocation == RouteNames.onboarding ||
-                state.matchedLocation == RouteNames.budgetSetup ||
-                state.matchedLocation == RouteNames.reminderTime)) {
+        if (!isFirstRun && state.matchedLocation == RouteNames.onboarding) {
           return RouteNames.dashboard;
         }
 
@@ -55,32 +42,17 @@ class AppRouter {
       routes: [
         GoRoute(
           path: RouteNames.onboarding,
-          builder: (context, state) => const OnboardingScreen(),
-        ),
-        GoRoute(
-          path: RouteNames.budgetSetup,
-          builder: (context, state) => const BudgetSetupScreen(),
-        ),
-        GoRoute(
-          path: RouteNames.reminderTime,
-          builder: (context, state) {
-            // Mark onboarding as complete when reaching reminder screen
-            // Actually, we should mark it when they CLICK continue on reminder screen,
-            // but for now, entering this screen implies they are in the final flow.
-            // Better to keep the _markOnboardingComplete call inside the screen itself?
-            // For now, let's leave it here but it's triggered on page load.
-            // Ideally, the ReminderScreen should call a provider to finish.
-            // But to avoid complex refactor:
-            _markOnboardingComplete();
-            return const ReminderTimeScreen();
-          },
+          name: RouteNames.onboarding,
+          builder: (context, state) => const OnboardingFlowScreen(),
         ),
         GoRoute(
           path: RouteNames.dashboard,
+          name: RouteNames.dashboard,
           builder: (context, state) => const DashboardScreen(),
         ),
         GoRoute(
           path: RouteNames.addTransaction,
+          name: RouteNames.addTransaction,
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const AddTransactionSheet(),
@@ -105,14 +77,17 @@ class AppRouter {
         ),
         GoRoute(
           path: RouteNames.transactions,
+          name: RouteNames.transactions,
           builder: (context, state) => const TransactionsScreen(),
         ),
         GoRoute(
           path: RouteNames.insights,
+          name: RouteNames.insights,
           builder: (context, state) => const InsightsScreen(),
         ),
         GoRoute(
           path: RouteNames.settings,
+          name: RouteNames.settings,
           builder: (context, state) => const SettingsScreen(),
         ),
       ],

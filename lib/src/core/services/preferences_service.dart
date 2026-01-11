@@ -8,6 +8,15 @@ class PreferencesService {
   static const String _lastLoggedDateKey = 'last_logged_date';
   static const String _reminderSetKey = 'reminder_set';
   static const String _monthlyBudgetKey = 'monthly_budget';
+  static const String _onboardingCompleteKey = 'onboarding_complete';
+
+  /// Mark onboarding as complete
+  Future<void> setOnboardingComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingCompleteKey, true);
+    // Also set is_first_run to false for AppRouter compatibility
+    await prefs.setBool('is_first_run', false);
+  }
 
   /// Save reminder time (stored as minutes since midnight)
   Future<void> saveReminderTime(TimeOfDay time) async {
