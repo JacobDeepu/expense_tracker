@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/route_names.dart';
-import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../onboarding/data/recurring_rules_repository.dart';
+import '../../../core/utils/category_icons.dart';
+import '../../../core/widgets/expandable_fab.dart';
 import '../providers/dashboard_providers.dart';
+import '../providers/top_categories_provider.dart';
+import '../widgets/top_categories_card.dart';
 import '../../transactions/presentation/widgets/edit_transaction_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -26,22 +28,28 @@ class DashboardScreen extends ConsumerWidget {
     final signalBlue = isDark
         ? AppColors.signalBlueDark
         : AppColors.signalBlueLight;
-    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final signalRed = isDark
+        ? AppColors.signalRedDark
+        : AppColors.signalRedLight;
+    final signalGreen = isDark
+        ? AppColors.insightPositiveDark
+        : AppColors.insightPositiveLight;
 
     // Watch providers
     final dailyLimitAsync = ref.watch(dailyLimitProvider);
     final budgetUsageAsync = ref.watch(budgetUsageProvider);
+    final spentTodayAsync = ref.watch(spentTodayProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
+    final topCategoriesAsync = ref.watch(topCategoriesProvider);
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 64),
-              // Header Section
+              // Header - Clean, no duplicate settings
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -49,226 +57,347 @@ class DashboardScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'SAFE TO SPEND',
-                        style: AppTypography.captionUppercase(textSecondary),
+                        'Good ${_getGreeting()}',
+                        style: AppTypography.bodyM(textSecondary),
                       ),
-                      const SizedBox(height: 8),
-                      
-                      // Safe Limit Value (Tappable for explainer)
-                      InkWell(
-                        onTap: () => _showLimitExplainer(context, ref),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              dailyLimitAsync.when(
-                                data: (limit) => Text(
-                                  '₹${limit.toStringAsFixed(0)}',
-                                  style: AppTypography.displayXL(textPrimary),
-                                ),
-                                loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
-                                error: (e, s) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.info_outline, size: 20, color: textSecondary),
-                            ],
-                          ),
-                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your finances',
+                        style: AppTypography.headingM(textPrimary),
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () => context.push(RouteNames.settings),
-                    icon: Icon(Icons.settings_outlined, color: textSecondary),
+                  // User avatar or brand mark (optional placeholder)
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: signalBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '₹',
+                        style: AppTypography.headingM(signalBlue),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              
+
+              const SizedBox(height: 28),
+
+              // Main Balance Card
+              dailyLimitAsync.when(
+                data: (limit) {
+                  final isPositive = limit >= 0;
+                  final accentColor = isPositive ? signalGreen : signalRed;
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor,
+                          accentColor.withValues(alpha: 0.85),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              isPositive
+                                  ? LucideIcons.trendingUp
+                                  : LucideIcons.trendingDown,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isPositive ? 'Available Today' : 'Over Budget',
+                              style: AppTypography.bodyM(
+                                Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '₹${limit.abs().toStringAsFixed(0)}',
+                          style: AppTypography.displayXLTabular(
+                            Colors.white,
+                          ).copyWith(fontSize: 44),
+                        ),
+                        const SizedBox(height: 16),
+                        // Progress indicator
+                        budgetUsageAsync.when(
+                          data: (usage) {
+                            return Column(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: usage.clamp(0.0, 1.0),
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    spentTodayAsync.when(
+                                      data: (spent) => Text(
+                                        '₹${spent.toStringAsFixed(0)} spent',
+                                        style: AppTypography.caption(
+                                          Colors.white.withValues(alpha: 0.8),
+                                        ),
+                                      ),
+                                      loading: () => const SizedBox(),
+                                      error: (e, s) => const SizedBox(),
+                                    ),
+                                    Text(
+                                      '${(usage * 100).toInt()}% used',
+                                      style: AppTypography.caption(
+                                        Colors.white.withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                          loading: () => const SizedBox(),
+                          error: (e, s) => const SizedBox(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const SizedBox(height: 180),
+                error: (e, s) => const SizedBox(height: 180),
+              ),
+
               const SizedBox(height: 16),
-              Text('Today\'s limit', style: AppTypography.bodyM(textSecondary)),
-              const SizedBox(height: 32),
 
-              // Budget Usage Progress Bar (1px height, subtle)
-              Container(
-                height: 1,
-                width: double.infinity,
-                decoration: BoxDecoration(color: border),
-                child: budgetUsageAsync.when(
-                  data: (usage) => FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: usage,
-                    child: Container(color: signalBlue),
-                  ),
-                  loading: () => const SizedBox(),
-                  error: (e, s) => const SizedBox(),
-                ),
+              // Top Categories
+              topCategoriesAsync.when(
+                data: (categories) {
+                  if (categories.isEmpty) return const SizedBox();
+                  return TopCategoriesCard(
+                    categories: categories,
+                    onSeeMore: () => context.push(RouteNames.insights),
+                  );
+                },
+                loading: () => const SizedBox(height: 180),
+                error: (e, s) => const SizedBox(),
               ),
-              const SizedBox(height: 48),
 
-              // Recent Transactions Section
-              Text(
-                'RECENT',
-                style: AppTypography.captionUppercase(textSecondary),
-              ),
               const SizedBox(height: 24),
 
-              // Transaction List
-              Expanded(
-                child: recentTransactions.when(
-                  data: (transactions) => ListView.builder(
-                    itemCount: transactions.length,
-                    itemBuilder: (context, index) {
-                      final transaction = transactions[index];
-                                          return Padding(
-                                            padding: const EdgeInsets.only(bottom: 24),
-                                            child: InkWell(
-                                              onTap: () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  shape: const RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.vertical(
-                                                      top: Radius.circular(16),
-                                                    ),
-                                                  ),
-                                                  builder:
-                                                      (context) =>
-                                                          EditTransactionSheet(transaction: transaction),
-                                                );
-                                              },
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                                textBaseline: TextBaseline.alphabetic,
-                                                children: [
-                                                  // Merchant name (left-aligned)
-                                                  Text(
-                                                    transaction.merchantName,
-                                                    style: AppTypography.bodyM(textPrimary),
-                                                  ),
-                                                  // Amount (right-aligned, monospace)
-                                                  Text(
-                                                    '-₹${transaction.amount.toStringAsFixed(2)}',
-                                                    style: GoogleFonts.robotoMono(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.w400,
-                                                      color: textPrimary,
-                                                      height: 1.5,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );                    },
+              // Recent Transactions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Activity',
+                    style: AppTypography.headingM(
+                      textPrimary,
+                    ).copyWith(fontSize: 18),
                   ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) => Text('Error: $err', style: TextStyle(color: Colors.red)),
-                ),
+                  TextButton(
+                    onPressed: () => context.push(RouteNames.transactions),
+                    child: Text(
+                      'See all',
+                      style: AppTypography.bodyM(signalBlue),
+                    ),
+                  ),
+                ],
               ),
 
-              // Add Expense Button
-              Padding(
-                padding: const EdgeInsets.only(bottom: 32),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.push(RouteNames.addTransaction);
-                    },
-                    child: const Text('Add Expense'),
-                  ),
-                ),
+              const SizedBox(height: 12),
+
+              recentTransactions.when(
+                data: (transactions) {
+                  if (transactions.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceSecondaryDark
+                            : AppColors.surfaceSecondaryLight,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              LucideIcons.inbox,
+                              size: 40,
+                              color: textSecondary,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No transactions yet',
+                              style: AppTypography.bodyM(textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceSecondaryDark
+                          : AppColors.surfacePrimaryLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.borderDark
+                            : AppColors.borderLight,
+                      ),
+                    ),
+                    child: Column(
+                      children: transactions.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final transaction = entry.value;
+                        final categoryIcon = CategoryIcons.getIcon('other');
+                        final categoryColor = CategoryIcons.getColor(
+                          'other',
+                          isDark,
+                        );
+
+                        return Column(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (context) => EditTransactionSheet(
+                                    transaction: transaction,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.vertical(
+                                top: index == 0
+                                    ? const Radius.circular(16)
+                                    : Radius.zero,
+                                bottom: index == transactions.length - 1
+                                    ? const Radius.circular(16)
+                                    : Radius.zero,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: categoryColor.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        categoryIcon,
+                                        size: 20,
+                                        color: categoryColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            transaction.merchantName,
+                                            style:
+                                                AppTypography.bodyM(
+                                                  textPrimary,
+                                                ).copyWith(
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Expense',
+                                            style: AppTypography.caption(
+                                              textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      '-₹${transaction.amount.toStringAsFixed(0)}',
+                                      style: AppTypography.bodyMTabular(
+                                        textPrimary,
+                                      ).copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (index < transactions.length - 1)
+                              Divider(
+                                height: 1,
+                                indent: 74,
+                                color: isDark
+                                    ? AppColors.borderDark
+                                    : AppColors.borderLight,
+                              ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => const SizedBox(),
               ),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Open transaction list
-        },
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: BorderSide(color: signalBlue, width: 1),
-        ),
-        child: Icon(Icons.list_rounded, color: signalBlue),
+      floatingActionButton: ExpandableFab(
+        onAddPressed: () => context.push(RouteNames.addTransaction),
+        onActivityPressed: () => context.push(RouteNames.transactions),
+        onInsightsPressed: () => context.push(RouteNames.insights),
+        onSettingsPressed: () => context.push(RouteNames.settings),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  void _showLimitExplainer(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Consumer(
-        builder: (context, ref, _) {
-           final prefs = ref.watch(preferencesServiceProvider);
-           final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
-           final spentTodayAsync = ref.watch(spentTodayProvider);
-           
-           return FutureBuilder<List<dynamic>>(
-             future: Future.wait<dynamic>([
-               prefs.getMonthlyBudget(),
-               recurringRepo.getTotalMonthlyAmount(),
-             ]),
-             builder: (context, snapshot) {
-               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-               
-               final budget = (snapshot.data![0] as double?) ?? 0.0;
-               final recurring = (snapshot.data![1] as double);
-               final spent = spentTodayAsync.asData?.value ?? 0.0;
-               final dailyBase = (budget - recurring) / 30;
-               final remaining = dailyBase - spent;
-
-               // Get correct text color
-               final isDark = Theme.of(context).brightness == Brightness.dark;
-               final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-
-               return Padding(
-                 padding: const EdgeInsets.all(24.0),
-                 child: Column(
-                   mainAxisSize: MainAxisSize.min,
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text('Limit Calculation', style: AppTypography.displayL(textPrimary)),
-                     const SizedBox(height: 16),
-                     _buildRow('Monthly Budget', '+ ₹${budget.toStringAsFixed(0)}'),
-                     _buildRow('Fixed Expenses', '- ₹${recurring.toStringAsFixed(0)}'),
-                     const Divider(),
-                     _buildRow('Disposable Income', '= ₹${(budget - recurring).toStringAsFixed(0)}'),
-                     const SizedBox(height: 8),
-                     Text('Divided by 30 days = ₹${dailyBase.toStringAsFixed(0)} / day', style: AppTypography.bodyM(Colors.grey)),
-                     const SizedBox(height: 16),
-                     _buildRow('Spent Today', '- ₹${spent.toStringAsFixed(0)}'),
-                     const Divider(),
-                     _buildRow('Safe to Spend', '= ₹${remaining.toStringAsFixed(0)}', isBold: true),
-                   ],
-                 ),
-               );
-             },
-           );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-        ],
-      ),
-    );
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
   }
 }
