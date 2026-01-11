@@ -102,6 +102,28 @@ class ReminderService {
       debugPrint('Error scheduling notification: $e');
     }
   }
+
+  Future<void> showTestNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'daily_reminder',
+      'Daily Spending Check',
+      channelDescription: 'Reminds you to record cash spending',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _notificationsPlugin.show(
+      1, // Different ID from scheduled one
+      'Test Notification',
+      'This is a test of the Daily Nudge.',
+      details,
+    );
+  }
 }
 
 final reminderServiceProvider = Provider<ReminderService>((ref) {

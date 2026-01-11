@@ -21,21 +21,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Debug Function: Test Nudge
   Future<void> _testNudge() async {
     final reminderService = ref.read(reminderServiceProvider);
-    await reminderService.requestPermissions();
     
-    final now = TimeOfDay.now();
-    int minute = now.minute + 1;
-    int hour = now.hour;
-    if (minute >= 60) {
-      minute = 0;
-      hour = (hour + 1) % 24;
+    // Request permission just in case
+    final granted = await reminderService.requestPermissions();
+    if (!granted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission denied! Cannot show notification.')),
+        );
+      }
+      return;
     }
     
-    await reminderService.scheduleDailyReminder(TimeOfDay(hour: hour, minute: minute));
+    await reminderService.showTestNotification();
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notification scheduled for 1 minute from now')),
+        const SnackBar(content: Text('Sent immediate test notification')),
       );
     }
   }
