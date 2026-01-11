@@ -46,14 +46,28 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               
-              // Safe Limit Value
-              dailyLimitAsync.when(
-                data: (limit) => Text(
-                  '₹${limit.toStringAsFixed(0)}',
-                  style: AppTypography.displayXL(textPrimary),
+              // Safe Limit Value (Tappable for explainer)
+              InkWell(
+                onTap: () => _showLimitExplainer(context, ref),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      dailyLimitAsync.when(
+                        data: (limit) => Text(
+                          '₹${limit.toStringAsFixed(0)}',
+                          style: AppTypography.displayXL(textPrimary),
+                        ),
+                        loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
+                        error: (_, __) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.info_outline, size: 20, color: textSecondary),
+                    ],
+                  ),
                 ),
-                loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
-                error: (_, __) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
               ),
               
               const SizedBox(height: 16),
@@ -151,6 +165,75 @@ class DashboardScreen extends ConsumerWidget {
           side: BorderSide(color: signalBlue, width: 1),
         ),
         child: Icon(Icons.list_rounded, color: signalBlue),
+      ),
+    );
+  }
+
+  void _showLimitExplainer(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+           // We need to re-fetch or watch these values to display them
+           final prefs = ref.watch(preferencesServiceProvider);
+           final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
+           final spentTodayAsync = ref.watch(spentTodayProvider);
+           
+           return FutureBuilder(
+             future: Future.wait([
+               prefs.getMonthlyBudget(),
+               recurringRepo.getTotalMonthlyAmount(),
+             ]),
+             builder: (context, snapshot) {
+               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+               
+               final budget = (snapshot.data![0] as double?) ?? 0.0;
+               final recurring = (snapshot.data![1] as double);
+               final spent = spentTodayAsync.valueOrNull ?? 0.0;
+               final dailyBase = (budget - recurring) / 30;
+               final remaining = dailyBase - spent;
+
+               return Padding(
+                 padding: const EdgeInsets.all(24.0),
+                 child: Column(
+                   mainAxisSize: MainAxisSize.min,
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Text('Limit Calculation', style: AppTypography.displayL(AppColors.textPrimaryDark)), // Use dynamic color in real app
+                     const SizedBox(height: 16),
+                     _buildRow('Monthly Budget', '+ ₹${budget.toStringAsFixed(0)}'),
+                     _buildRow('Fixed Expenses', '- ₹${recurring.toStringAsFixed(0)}'),
+                     const Divider(),
+                     _buildRow('Disposable Income', '= ₹${(budget - recurring).toStringAsFixed(0)}'),
+                     const SizedBox(height: 8),
+                     Text('Divided by 30 days = ₹${dailyBase.toStringAsFixed(0)} / day', style: AppTypography.bodyS(Colors.grey)),
+                     const SizedBox(height: 16),
+                     _buildRow('Spent Today', '- ₹${spent.toStringAsFixed(0)}'),
+                     const Divider(),
+                     _buildRow('Safe to Spend', '= ₹${remaining.toStringAsFixed(0)}', isBold: true),
+                   ],
+                 ),
+               );
+             },
+           );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        ],
       ),
     );
   }
