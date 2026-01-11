@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../data/onboarding_data.dart';
+import '../data/recurring_rules_repository.dart';
 import '../widgets/swipe_card.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final CardSwiperController _controller = CardSwiperController();
   final List<OnboardingCard> _cards = sampleOnboardingCards;
   final List<OnboardingCard> _selectedCards = [];
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -36,16 +39,40 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _selectedCards.add(_cards[previousIndex]);
     }
 
-    // If all cards swiped, navigate to reminder time screen
+    // If all cards swiped (currentIndex is null), save and navigate
     if (currentIndex == null) {
-      Future.microtask(() {
-        if (mounted) {
-          context.go(RouteNames.reminderTime);
-        }
-      });
+      _finishOnboarding();
     }
 
     return true;
+  }
+
+  Future<void> _finishOnboarding() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      // Save selected rules to DB
+      await ref.read(recurringRulesRepositoryProvider).addRules(_selectedCards);
+
+      if (mounted) {
+        context.go(RouteNames.reminderTime);
+      }
+    } catch (e) {
+      // Handle error (log it)
+      debugPrint('Error saving recurring rules: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving setup: $e')),
+        );
+        // Navigate anyway for MVP continuity? Or stay?
+        // Let's stay so they can retry or skip.
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -57,6 +84,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final textSecondary = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondaryLight;
+
+    if (_isSaving) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -113,25 +146,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            // Instructions
+            // Instructions / Controls
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.arrow_back, size: 20, color: textSecondary),
-                      const SizedBox(width: 8),
-                      Text('Skip', style: AppTypography.bodyM(textSecondary)),
-                    ],
+                  TextButton.icon(
+                    onPressed: () => _controller.swipe(CardSwiperDirection.left),
+                    icon: Icon(Icons.close, size: 20, color: textSecondary),
+                    label:
+                        Text('Skip', style: AppTypography.bodyM(textSecondary)),
                   ),
-                  Row(
-                    children: [
-                      Text('Add', style: AppTypography.bodyM(textSecondary)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20, color: textSecondary),
-                    ],
+                  TextButton.icon(
+                    onPressed: () => _controller.swipe(CardSwiperDirection.right),
+                    label:
+                        Text('Add', style: AppTypography.bodyM(textSecondary)),
+                    icon: Icon(
+                      Icons.check,
+                      size: 20,
+                      color: isDark ? Colors.greenAccent : Colors.green,
+                    ),
                   ),
                 ],
               ),
