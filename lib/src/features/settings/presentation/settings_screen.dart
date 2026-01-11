@@ -1,0 +1,168 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/services/preferences_service.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../onboarding/providers/reminder_providers.dart';
+
+class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  // Debug Function: Test Nudge
+  Future<void> _testNudge() async {
+    final reminderService = ref.read(reminderServiceProvider);
+    
+    // Request permission just in case
+    await reminderService.requestPermissions();
+    
+    // Schedule for 5 seconds from now
+    // Since scheduleDailyReminder takes TimeOfDay, we need a test function
+    // For now, let's just trigger it by scheduling it for 1 minute from now
+    final now = TimeOfDay.now();
+    // Logic to add 1 minute (handling 60 wrap)
+    int minute = now.minute + 1;
+    int hour = now.hour;
+    if (minute >= 60) {
+      minute = 0;
+      hour = (hour + 1) % 24;
+    }
+    
+    await reminderService.scheduleDailyReminder(TimeOfDay(hour: hour, minute: minute));
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Notification scheduled for 1 minute from now')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+
+    final prefs = ref.watch(preferencesServiceProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Settings', style: AppTypography.displayL(textPrimary).copyWith(fontSize: 24)),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textPrimary),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: ListView(
+        children: [
+          const SizedBox(height: 24),
+          
+          _buildSectionHeader('Finances', textSecondary),
+          FutureBuilder<double?>(
+            future: prefs.getMonthlyBudget(),
+            builder: (context, snapshot) {
+              final budget = snapshot.data ?? 0.0;
+              return _buildListTile(
+                title: 'Monthly Budget',
+                subtitle: '₹${budget.toStringAsFixed(0)}',
+                icon: Icons.account_balance_wallet_outlined,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                onTap: () {
+                  // TODO: Open budget editor dialog
+                },
+              );
+            },
+          ),
+          _buildListTile(
+            title: 'Recurring Expenses',
+            subtitle: 'Manage rent, bills, subscriptions',
+            icon: Icons.refresh_outlined,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+            onTap: () {
+               // TODO: Open recurring rules list
+            },
+          ),
+
+          const Divider(height: 48),
+
+          _buildSectionHeader('Preferences', textSecondary),
+          FutureBuilder<TimeOfDay?>(
+            future: prefs.getReminderTime(),
+            builder: (context, snapshot) {
+              final time = snapshot.data;
+              final timeStr = time != null ? time.format(context) : 'Not set';
+              return _buildListTile(
+                title: 'Daily Reminder',
+                subtitle: timeStr,
+                icon: Icons.notifications_outlined,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                onTap: () {
+                  // TODO: Open time picker
+                },
+              );
+            },
+          ),
+
+          const Divider(height: 48),
+
+          _buildSectionHeader('Debug Zone', Colors.redAccent),
+          _buildListTile(
+            title: 'Test Daily Nudge',
+            subtitle: 'Schedule notification for +1 min',
+            icon: Icons.bug_report_outlined,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+            onTap: _testNudge,
+          ),
+          _buildListTile(
+            title: 'Reset Onboarding',
+            subtitle: 'Wipe all data and restart',
+            icon: Icons.delete_forever_outlined,
+            textPrimary: Colors.red,
+            textSecondary: textSecondary,
+            onTap: () async {
+               // TODO: Implement full wipe
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: AppTypography.captionUppercase(color),
+      ),
+    );
+  }
+
+  Widget _buildListTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color textPrimary,
+    required Color textSecondary,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      leading: Icon(icon, color: textPrimary),
+      title: Text(title, style: AppTypography.bodyM(textPrimary)),
+      subtitle: Text(subtitle, style: AppTypography.bodyM(textSecondary)),
+      trailing: Icon(Icons.chevron_right, color: textSecondary),
+      onTap: onTap,
+    );
+  }
+}
