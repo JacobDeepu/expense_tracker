@@ -58,6 +58,14 @@ class TransactionsRepository {
       return transactions.fold(0.0, (sum, t) => sum + t.amount);
     });
   }
+
+  Future<void> deleteTransaction(int id) {
+    return (_db.delete(_db.transactions)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<void> updateTransaction(Transaction transaction) {
+    return _db.update(_db.transactions).replace(transaction);
+  }
 }
 
 final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
