@@ -91,12 +91,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await prefs.saveReminderTime(newTime);
       await reminderService.scheduleDailyReminder(newTime);
 
-      if (mounted) {
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reminder set for ${newTime.format(context)}')),
-        );
-      }
+      if (!mounted) return;
+      
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reminder set for ${newTime.format(context)}')),
+      );
     }
   }
 
