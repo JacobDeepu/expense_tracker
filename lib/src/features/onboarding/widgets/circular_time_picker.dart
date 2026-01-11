@@ -40,24 +40,33 @@ class _CircularTimePickerState extends State<CircularTimePicker> {
 
   double _timeToAngle() {
     // Convert time to angle (0-360 degrees)
-    // Each hour = 30 degrees, each minute = 6 degrees
-    return ((_hour % 12) * 30.0) + (_minute * 0.5);
+    // 12-hour clock face
+    final hour12 = _hour % 12;
+    return ((hour12 * 30.0) + (_minute * 0.5));
   }
 
   void _angleToTime(double angle) {
     // Normalize angle to 0-360
-    angle = angle % 360;
-    if (angle < 0) angle += 360;
+    double normalizedAngle = angle % 360;
+    if (normalizedAngle < 0) normalizedAngle += 360;
 
-    // Convert angle to time
-    // Each 30 degrees = 1 hour, each 6 degrees = 1 minute
-    final totalMinutes = (angle * 2)
-        .round(); // 360 degrees = 720 minutes (12 hours)
-    _hour = (totalMinutes ~/ 60) % 24;
-    _minute = totalMinutes % 60;
+    // Convert angle to time (12h format)
+    // Each 30 degrees = 1 hour, each 0.5 degrees = 1 minute
+    final totalMinutes = (normalizedAngle * 2).round();
+    
+    int newHour = (totalMinutes ~/ 60) % 12;
+    int newMinute = totalMinutes % 60;
+    
+    // Round to nearest 5 minutes
+    newMinute = (newMinute ~/ 5) * 5;
 
-    // Round to nearest 5 minutes for better UX
-    _minute = (_minute ~/ 5) * 5;
+    // Preserve AM/PM from current state
+    final isPm = _hour >= 12;
+    if (isPm && newHour < 12) newHour += 12;
+    if (!isPm && newHour == 12) newHour = 0; // Handle midnight edge case if needed
+
+    _hour = newHour;
+    _minute = newMinute;
 
     widget.onTimeChanged(TimeOfDay(hour: _hour, minute: _minute));
   }
@@ -65,37 +74,65 @@ class _CircularTimePickerState extends State<CircularTimePicker> {
   void _handlePanUpdate(DragUpdateDetails details, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final position = details.localPosition - center;
-    final newAngle = math.atan2(position.dy, position.dx) * 180 / math.pi + 90;
+    
+    // Calculate angle in degrees (0 at top/12 o'clock)
+    // atan2 returns radians from -pi to pi (0 at right/3 o'clock)
+    double newAngle = math.atan2(position.dy, position.dx) * 180 / math.pi;
+    
+    // Shift so 0 is at top (-90 degrees in atan2)
+    newAngle += 90;
+    
+    if (newAngle < 0) newAngle += 360;
 
     setState(() {
       _angle = newAngle;
       _angleToTime(_angle);
     });
 
-    // Haptic feedback every 5 degrees (every 10 minutes)
-    if ((_angle % 15).abs() < 1) {
+    // Haptic feedback
+    if ((_angle % 15).abs() < 2) { // increased threshold slightly
       HapticFeedback.selectionClick();
     }
   }
 
+  void _toggleAmPm() {
+    setState(() {
+      if (_hour >= 12) {
+        _hour -= 12;
+      } else {
+        _hour += 12;
+      }
+      widget.onTimeChanged(TimeOfDay(hour: _hour, minute: _minute));
+    });
+    HapticFeedback.mediumImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Add tap gesture for AM/PM toggle
     return GestureDetector(
       onPanUpdate: (details) {
         if (!_isDragging) {
           setState(() => _isDragging = true);
           HapticFeedback.mediumImpact();
         }
-        _handlePanUpdate(details, Size(300, 300));
+        _handlePanUpdate(details, const Size(300, 300));
       },
       onPanEnd: (_) {
         setState(() => _isDragging = false);
         HapticFeedback.lightImpact();
       },
+      onTapUp: (details) {
+        // Simple hit test for center area to toggle AM/PM
+        final center = const Offset(150, 150); // Half of 300
+        if ((details.localPosition - center).distance < 60) {
+          _toggleAmPm();
+        }
+      },
       child: CustomPaint(
         size: const Size(300, 300),
         painter: _CircularTimePickerPainter(
-          angle: _angle,
+          angle: _timeToAngle(), // Always use time to drive angle for consistency
           activeColor: widget.activeColor,
           inactiveColor: widget.inactiveColor,
           textColor: widget.textColor,
