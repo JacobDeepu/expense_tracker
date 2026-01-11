@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -8,6 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ReminderService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  
+  // Stream to handle notification taps
+  final _tapController = StreamController<String?>.broadcast();
+  Stream<String?> get onTap => _tapController.stream;
 
   ReminderService() {
     _initialize();
@@ -36,6 +41,9 @@ class ReminderService {
       initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         // Handle notification tap logic here
+        if (details.payload != null) {
+          _tapController.add(details.payload);
+        }
       },
     );
   }
@@ -97,6 +105,7 @@ class ReminderService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+        payload: 'daily_entry',
       );
     } catch (e) {
       debugPrint('Error scheduling notification: $e');
@@ -122,6 +131,7 @@ class ReminderService {
       'Test Notification',
       'This is a test of the Daily Nudge.',
       details,
+      payload: 'daily_entry',
     );
   }
 }
