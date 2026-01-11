@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 import '../../onboarding/providers/reminder_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -43,6 +44,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _editBudget(BuildContext context, double currentBudget) async {
+    final controller = TextEditingController(text: currentBudget.toStringAsFixed(0));
+    final newBudget = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Monthly Budget'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            prefixText: '₹',
+            labelText: 'Amount',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final val = double.tryParse(controller.text);
+              if (val != null) Navigator.pop(context, val);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newBudget != null) {
+      await ref.read(preferencesServiceProvider).saveMonthlyBudget(newBudget);
+      ref.invalidate(dailyBaseBudgetProvider); // Recalculate Dashboard
+      
+      if (mounted) {
+        setState(() {}); // Refresh local UI to show new budget
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -74,9 +116,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 textPrimary: textPrimary,
                 textSecondary: textSecondary,
-                onTap: () {
-                  // TODO: Open budget editor dialog
-                },
+                onTap: () => _editBudget(context, budget),
               );
             },
           ),
