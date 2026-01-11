@@ -43,6 +43,12 @@ class RecurringRulesRepository {
       }
     });
   }
+
+  /// Get total monthly recurring expenses
+  Future<double> getTotalMonthlyAmount() async {
+    final result = await _db.select(_db.recurringRules).get();
+    return result.fold(0.0, (sum, rule) => sum + rule.estimatedAmount);
+  }
 }
 
 final recurringRulesRepositoryProvider = Provider<RecurringRulesRepository>((ref) {

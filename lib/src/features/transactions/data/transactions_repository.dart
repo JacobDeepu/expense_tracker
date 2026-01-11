@@ -38,6 +38,21 @@ class TransactionsRepository {
           ..limit(20))
         .watch();
   }
+
+  /// Get total spent today
+  Stream<double> watchSpentToday() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    final query = _db.select(_db.transactions)
+      ..where((t) => t.date.isBetweenValues(startOfDay, endOfDay))
+      ..where((t) => t.type.equals(TransactionType.expense.index));
+
+    return query.watch().map((transactions) {
+      return transactions.fold(0.0, (sum, t) => sum + t.amount);
+    });
+  }
 }
 
 final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {

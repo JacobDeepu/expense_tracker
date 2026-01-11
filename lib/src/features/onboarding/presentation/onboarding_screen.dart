@@ -56,7 +56,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await ref.read(recurringRulesRepositoryProvider).addRules(_selectedCards);
 
       if (mounted) {
-        context.go(RouteNames.reminderTime);
+        context.go(RouteNames.budgetSetup);
       }
     } catch (e) {
       // Handle error (log it)

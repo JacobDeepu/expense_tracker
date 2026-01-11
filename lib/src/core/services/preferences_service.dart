@@ -6,6 +6,7 @@ class PreferencesService {
   static const String _reminderTimeKey = 'reminder_time';
   static const String _lastLoggedDateKey = 'last_logged_date';
   static const String _reminderSetKey = 'reminder_set';
+  static const String _monthlyBudgetKey = 'monthly_budget';
 
   /// Save reminder time (stored as minutes since midnight)
   Future<void> saveReminderTime(TimeOfDay time) async {
@@ -31,6 +32,18 @@ class PreferencesService {
   Future<bool> isReminderSet() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_reminderSetKey) ?? false;
+  }
+
+  /// Save monthly budget
+  Future<void> saveMonthlyBudget(double amount) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_monthlyBudgetKey, amount);
+  }
+
+  /// Get monthly budget
+  Future<double?> getMonthlyBudget() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_monthlyBudgetKey);
   }
 
   /// Save last logged date (mock for Phase 2)
@@ -72,3 +85,9 @@ class PreferencesService {
     return nowMinutes >= reminderMinutes;
   }
 }
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final preferencesServiceProvider = Provider<PreferencesService>((ref) {
+  return PreferencesService();
+});

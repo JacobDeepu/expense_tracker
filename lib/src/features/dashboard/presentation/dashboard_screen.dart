@@ -27,8 +27,8 @@ class DashboardScreen extends ConsumerWidget {
     final border = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     // Watch providers
-    final dailyLimit = ref.watch(dailyLimitProvider);
-    final budgetUsage = ref.watch(budgetUsageProvider);
+    final dailyLimitAsync = ref.watch(dailyLimitProvider);
+    final budgetUsageAsync = ref.watch(budgetUsageProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
 
     return Scaffold(
@@ -45,10 +45,17 @@ class DashboardScreen extends ConsumerWidget {
                 style: AppTypography.captionUppercase(textSecondary),
               ),
               const SizedBox(height: 8),
-              Text(
-                '₹${dailyLimit.toStringAsFixed(0)}',
-                style: AppTypography.displayXL(textPrimary),
+              
+              // Safe Limit Value
+              dailyLimitAsync.when(
+                data: (limit) => Text(
+                  '₹${limit.toStringAsFixed(0)}',
+                  style: AppTypography.displayXL(textPrimary),
+                ),
+                loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
+                error: (_, __) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
               ),
+              
               const SizedBox(height: 16),
               Text('Today\'s limit', style: AppTypography.bodyM(textSecondary)),
               const SizedBox(height: 32),
@@ -58,10 +65,14 @@ class DashboardScreen extends ConsumerWidget {
                 height: 1,
                 width: double.infinity,
                 decoration: BoxDecoration(color: border),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: budgetUsage,
-                  child: Container(color: signalBlue),
+                child: budgetUsageAsync.when(
+                  data: (usage) => FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: usage,
+                    child: Container(color: signalBlue),
+                  ),
+                  loading: () => const SizedBox(),
+                  error: (_, __) => const SizedBox(),
                 ),
               ),
               const SizedBox(height: 48),
@@ -75,36 +86,40 @@ class DashboardScreen extends ConsumerWidget {
 
               // Transaction List
               Expanded(
-                child: ListView.builder(
-                  itemCount: recentTransactions.length,
-                  itemBuilder: (context, index) {
-                    final transaction = recentTransactions[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          // Merchant name (left-aligned)
-                          Text(
-                            transaction.merchantName,
-                            style: AppTypography.bodyM(textPrimary),
-                          ),
-                          // Amount (right-aligned, monospace)
-                          Text(
-                            '-${transaction.formattedAmount}',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: textPrimary,
-                              height: 1.5,
+                child: recentTransactions.when(
+                  data: (transactions) => ListView.builder(
+                    itemCount: transactions.length,
+                    itemBuilder: (context, index) {
+                      final transaction = transactions[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            // Merchant name (left-aligned)
+                            Text(
+                              transaction.merchantName,
+                              style: AppTypography.bodyM(textPrimary),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                            // Amount (right-aligned, monospace)
+                            Text(
+                              '-₹${transaction.amount.toStringAsFixed(2)}',
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: textPrimary,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Error: $err', style: TextStyle(color: Colors.red)),
                 ),
               ),
 
