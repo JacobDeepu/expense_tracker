@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/local/database.dart'; // Import for Category type
+import '../../../data/local/tables.dart'; // For TransactionType/Source enums
+import '../data/categories_repository.dart';
+import '../data/transactions_repository.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
   const AddTransactionSheet({super.key});
@@ -17,17 +20,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
 
 class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final TextEditingController _amountController = TextEditingController();
-  String? _selectedCategory;
-
-  final List<String> _categories = [
-    'Food & Dining',
-    'Transportation',
-    'Shopping',
-    'Entertainment',
-    'Utilities',
-    'Health & Fitness',
-    'Groceries',
-  ];
+  Category? _selectedCategory;
 
   @override
   void initState() {
@@ -45,15 +38,31 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Future<void> _handleSave() async {
-    if (_amountController.text.isEmpty) {
+    final amountText = _amountController.text;
+    if (amountText.isEmpty || _selectedCategory == null) {
+      // Basic validation feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an amount and select a category'),
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
-    // Save logged date (mock for Phase 2)
-    final prefsService = PreferencesService();
-    await prefsService.saveLastLoggedDate(DateTime.now());
+    final amount = double.tryParse(amountText);
+    if (amount == null) return;
 
-    // TODO: Save transaction to database
+    // Save to Database via Repository
+    await ref.read(transactionsRepositoryProvider).addTransaction(
+          amount: amount,
+          merchantName: 'Cash Spend', // Default for manual entry
+          date: DateTime.now(),
+          source: TransactionSource.manual,
+          type: TransactionType.expense,
+          categoryId: _selectedCategory!.id,
+        );
+
     if (mounted) {
       context.pop();
     }
@@ -71,6 +80,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final signalBlue = isDark
         ? AppColors.signalBlueDark
         : AppColors.signalBlueLight;
+
+    // Watch categories from DB
+    final categoriesAsync = ref.watch(categoriesListProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -117,6 +129,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
+                    prefixText: '₹', // Clean currency symbol
+                    prefixStyle: AppTypography.displayXL(
+                      textPrimary,
+                    ).copyWith(fontSize: 64, letterSpacing: -1),
                   ),
                 ),
 
@@ -129,46 +145,55 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
                 const SizedBox(height: 16),
 
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _categories.map((category) {
-                    final isSelected = _selectedCategory == category;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? signalBlue
-                              : (isDark
-                                    ? AppColors.surfaceSecondaryDark
-                                    : AppColors.surfaceSecondaryLight),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
+                categoriesAsync.when(
+                  data: (categories) => Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: categories.map((category) {
+                      final isSelected = _selectedCategory?.id == category.id;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
                             color: isSelected
                                 ? signalBlue
                                 : (isDark
+                                    ? AppColors.surfaceSecondaryDark
+                                    : AppColors.surfaceSecondaryLight),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isSelected
+                                  ? signalBlue
+                                  : (isDark
                                       ? AppColors.borderDark
                                       : AppColors.borderLight),
+                            ),
+                          ),
+                          child: Text(
+                            category.name,
+                            style: AppTypography.bodyM(
+                              isSelected ? Colors.white : textPrimary,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          category,
-                          style: AppTypography.bodyM(
-                            isSelected ? Colors.white : textPrimary,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (err, stack) => Center(
+                    child: Text('Error loading categories',
+                        style: TextStyle(color: Colors.red)),
+                  ),
                 ),
 
                 const Spacer(),
