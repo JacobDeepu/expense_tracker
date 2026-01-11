@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../data/local/database.dart'; // Import for Category type
-import '../../../data/local/tables.dart'; // For TransactionType/Source enums
+import '../../../core/utils/category_icons.dart';
+import '../../../data/local/database.dart';
+import '../../../data/local/tables.dart';
 import '../data/categories_repository.dart';
 import '../data/transactions_repository.dart';
 import '../logic/ocr/receipt_scanner_service.dart';
@@ -21,29 +23,39 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
 
 class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _merchantController = TextEditingController();
   Category? _selectedCategory;
   bool _isScanning = false;
 
   @override
-  void initState() {
-    super.initState();
-    // Auto-focus on amount field
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(FocusNode());
-    });
-  }
-
-  @override
   void dispose() {
     _amountController.dispose();
+    _merchantController.dispose();
     super.dispose();
+  }
+
+  void _setQuickAmount(int amount) {
+    setState(() {
+      _amountController.text = amount.toString();
+    });
+    HapticFeedback.lightImpact();
+  }
+
+  void _incrementAmount(int increment) {
+    final current = int.tryParse(_amountController.text) ?? 0;
+    setState(() {
+      _amountController.text = (current + increment).toString();
+    });
+    HapticFeedback.selectionClick();
   }
 
   Future<void> _handleScan() async {
     setState(() => _isScanning = true);
     try {
-      final result = await ref.read(receiptScannerServiceProvider).scanReceipt();
-      
+      final result = await ref
+          .read(receiptScannerServiceProvider)
+          .scanReceipt();
+
       if (result != null && result.amount != null) {
         setState(() {
           _amountController.text = result.amount!.toStringAsFixed(0);
@@ -51,12 +63,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Detected Amount: ₹${result.amount}')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not detect total amount')),
           );
         }
       }
@@ -72,7 +78,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   Future<void> _handleSave() async {
     final amountText = _amountController.text;
     if (amountText.isEmpty || _selectedCategory == null) {
-      // Basic validation feedback
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter an amount and select a category'),
@@ -85,12 +90,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final amount = double.tryParse(amountText);
     if (amount == null) return;
 
-    // Save to Database via Repository
-    await ref.read(transactionsRepositoryProvider).addTransaction(
+    final merchantName = _merchantController.text.isEmpty
+        ? 'Cash Spend'
+        : _merchantController.text;
+
+    await ref
+        .read(transactionsRepositoryProvider)
+        .addTransaction(
           amount: amount,
-          merchantName: 'Cash Spend', // Default for manual entry
+          merchantName: merchantName,
           date: DateTime.now(),
-          source: TransactionSource.manual, // TODO: Update to OCR if scanned
+          source: TransactionSource.manual,
           type: TransactionType.expense,
           categoryId: _selectedCategory!.id,
         );
@@ -109,156 +119,316 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final textSecondary = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondaryLight;
-    final signalBlue = isDark
-        ? AppColors.signalBlueDark
-        : AppColors.signalBlueLight;
+    final surface = isDark
+        ? AppColors.surfaceSecondaryDark
+        : AppColors.surfaceSecondaryLight;
+    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
 
-    // Watch categories from DB
     final categoriesAsync = ref.watch(categoriesListProvider);
 
     return Scaffold(
+      backgroundColor: isDark
+          ? AppColors.surfacePrimaryDark
+          : AppColors.surfacePrimaryLight,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.9,
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              children: [
-                const SizedBox(height: 32),
-
-                // Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ADD EXPENSE',
-                      style: AppTypography.captionUppercase(textSecondary),
-                    ),
-                    IconButton(
-                      onPressed: () => context.pop(),
-                      icon: Icon(Icons.close, color: textPrimary),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 64),
-
-                // Amount Input (Massive, centered)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                     Expanded(
-                       child: TextField(
-                        controller: _amountController,
-                        autofocus: true,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        textAlign: TextAlign.center,
-                        style: AppTypography.displayXL(
-                          textPrimary,
-                        ).copyWith(fontSize: 64, letterSpacing: -1),
-                        decoration: InputDecoration(
-                          hintText: '₹0',
-                          hintStyle: AppTypography.displayXL(
-                            textSecondary,
-                          ).copyWith(fontSize: 64, letterSpacing: -1),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          prefixText: '₹', // Clean currency symbol
-                          prefixStyle: AppTypography.displayXL(
-                            textPrimary,
-                          ).copyWith(fontSize: 64, letterSpacing: -1),
-                        ),
-                                           ),
-                     ),
-                    // Scan Button
-                    IconButton(
-                      onPressed: _isScanning ? null : _handleScan,
-                      icon: _isScanning 
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Icon(Icons.camera_alt_outlined, size: 32, color: signalBlue),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 64),
-
-                // Category Selection
-                Text(
-                  'CATEGORY',
-                  style: AppTypography.captionUppercase(textSecondary),
-                ),
-                const SizedBox(height: 16),
-
-                categoriesAsync.when(
-                  data: (categories) => Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: categories.map((category) {
-                      final isSelected = _selectedCategory?.id == category.id;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? signalBlue
-                                : (isDark
-                                    ? AppColors.surfaceSecondaryDark
-                                    : AppColors.surfaceSecondaryLight),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isSelected
-                                  ? signalBlue
-                                  : (isDark
-                                      ? AppColors.borderDark
-                                      : AppColors.borderLight),
-                            ),
-                          ),
-                          child: Text(
-                            category.name,
-                            style: AppTypography.bodyM(
-                              isSelected ? Colors.white : textPrimary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'New Expense',
+                    style: AppTypography.headingM(textPrimary),
                   ),
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(),
+                  IconButton(
+                    onPressed: () => context.pop(),
+                    icon: Icon(LucideIcons.x, color: textSecondary),
                   ),
-                  error: (err, stack) => Center(
-                    child: Text('Error loading categories',
-                        style: TextStyle(color: Colors.red)),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Save Button
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _handleSave,
-                      child: const Text('Save'),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount Input Section
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: surface,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                '₹',
+                                style: AppTypography.displayXLTabular(
+                                  textPrimary,
+                                ).copyWith(fontSize: 48),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _amountController,
+                                  autofocus: true,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  style: AppTypography.displayXLTabular(
+                                    textPrimary,
+                                  ).copyWith(fontSize: 48),
+                                  decoration: InputDecoration(
+                                    hintText: '0',
+                                    hintStyle: AppTypography.displayXLTabular(
+                                      textSecondary,
+                                    ).copyWith(fontSize: 48),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    filled: false,
+                                    contentPadding: EdgeInsets.zero,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          // Quick Amounts (set)
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            alignment: WrapAlignment.center,
+                            children: [50, 100, 200, 500, 1000].map((amount) {
+                              return GestureDetector(
+                                onTap: () => _setQuickAmount(amount),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppColors.surfacePrimaryDark
+                                        : AppColors.surfacePrimaryLight,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: border),
+                                  ),
+                                  child: Text(
+                                    '₹$amount',
+                                    style: AppTypography.bodyM(
+                                      textPrimary,
+                                    ).copyWith(fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 12),
+                          // Increment buttons (+add to current)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [50, 100, 500].map((amount) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: GestureDetector(
+                                  onTap: () => _incrementAmount(amount),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          (isDark
+                                                  ? AppColors.signalBlueDark
+                                                  : AppColors.signalBlueLight)
+                                              .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '+$amount',
+                                      style: AppTypography.bodyM(
+                                        isDark
+                                            ? AppColors.signalBlueDark
+                                            : AppColors.signalBlueLight,
+                                      ).copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Category Selection
+                    Text(
+                      'Category',
+                      style: AppTypography.bodyM(
+                        textSecondary,
+                      ).copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 12),
+
+                    categoriesAsync.when(
+                      data: (categories) => Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: categories.map((category) {
+                          final isSelected =
+                              _selectedCategory?.id == category.id;
+                          final categoryIcon = CategoryIcons.getIcon(
+                            category.name,
+                          );
+                          final categoryColor = CategoryIcons.getColor(
+                            category.name,
+                            isDark,
+                          );
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory = category;
+                              });
+                              HapticFeedback.selectionClick();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected ? categoryColor : surface,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected ? categoryColor : border,
+                                  width: isSelected ? 0 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    categoryIcon,
+                                    size: 18,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : categoryColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    category.name,
+                                    style: AppTypography.bodyM(
+                                      isSelected ? Colors.white : textPrimary,
+                                    ).copyWith(fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Text('Error loading categories'),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Merchant Name
+                    Text(
+                      'Note (optional)',
+                      style: AppTypography.bodyM(
+                        textSecondary,
+                      ).copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _merchantController,
+                      style: AppTypography.bodyL(textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Add a description...',
+                        hintStyle: AppTypography.bodyL(textSecondary),
+                        filled: true,
+                        fillColor: surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                        prefixIcon: Icon(
+                          LucideIcons.pencil,
+                          color: textSecondary,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Scan Receipt Button
+                    OutlinedButton.icon(
+                      onPressed: _isScanning ? null : _handleScan,
+                      icon: _isScanning
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(LucideIcons.scan, size: 20),
+                      label: const Text('Scan Receipt'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        side: BorderSide(color: border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Save Button
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: ElevatedButton(
+                onPressed: _handleSave,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(LucideIcons.check, size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Save Expense'),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
