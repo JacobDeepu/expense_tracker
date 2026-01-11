@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Service to manage app preferences and settings
 class PreferencesService {
@@ -85,8 +86,6 @@ class PreferencesService {
     return nowMinutes >= reminderMinutes;
   }
 }
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
   return PreferencesService();

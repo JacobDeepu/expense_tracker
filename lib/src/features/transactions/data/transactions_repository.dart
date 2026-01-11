@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/local/database.dart';
 import '../../../data/local/tables.dart';
+import '../../../data/local/database_provider.dart';
 
 class TransactionsRepository {
   final AppDatabase _db;
@@ -17,6 +18,10 @@ class TransactionsRepository {
     String? rawText,
     int? categoryId,
   }) {
+    // Default to 'Other' (ID 7) if no category provided
+    // In a real app, we should query for 'Other' ID or handle this dynamically
+    const int defaultCategoryId = 7; 
+
     return _db.into(_db.transactions).insert(
           TransactionsCompanion(
             amount: Value(amount),
@@ -25,7 +30,7 @@ class TransactionsRepository {
             source: Value(source),
             type: Value(type),
             rawText: Value(rawText),
-            categoryId: Value(categoryId),
+            categoryId: Value(categoryId ?? defaultCategoryId),
           ),
         );
   }
@@ -58,11 +63,4 @@ class TransactionsRepository {
 final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return TransactionsRepository(db);
-});
-
-// We need to expose the databaseProvider first. 
-// I'll assume it will be created in `lib/src/data/local/database_provider.dart` 
-// or I can add it here temporarily, but better to follow structure.
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
 });

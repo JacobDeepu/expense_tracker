@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/local/database.dart';
 import '../../../data/local/tables.dart';
+import '../../../data/local/database_provider.dart';
 import 'onboarding_data.dart';
 
 class RecurringRulesRepository {
@@ -47,7 +48,7 @@ class RecurringRulesRepository {
   /// Get total monthly recurring expenses
   Future<double> getTotalMonthlyAmount() async {
     final result = await _db.select(_db.recurringRules).get();
-    return result.fold(0.0, (sum, rule) => sum + rule.estimatedAmount);
+    return result.fold<double>(0.0, (sum, rule) => sum + rule.estimatedAmount);
   }
 }
 

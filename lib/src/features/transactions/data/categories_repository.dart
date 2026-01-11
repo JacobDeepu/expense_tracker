@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/local/database.dart';
-import 'transactions_repository.dart'; // To access databaseProvider
+import '../../../data/local/database_provider.dart';
+
+// To access databaseProvider
 
 class CategoriesRepository {
   final AppDatabase _db;

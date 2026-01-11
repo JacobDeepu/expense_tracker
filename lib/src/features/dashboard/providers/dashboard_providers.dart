@@ -38,8 +38,8 @@ final dailyLimitProvider = Provider<AsyncValue<double>>((ref) {
     return const AsyncLoading();
   }
 
-  final baseBudget = baseBudgetAsync.valueOrNull ?? 0.0;
-  final spentToday = spentTodayAsync.valueOrNull ?? 0.0;
+  final baseBudget = baseBudgetAsync.asData?.value ?? 0.0;
+  final spentToday = spentTodayAsync.asData?.value ?? 0.0;
 
   return AsyncData(baseBudget - spentToday);
 });
@@ -53,8 +53,8 @@ final budgetUsageProvider = Provider<AsyncValue<double>>((ref) {
     return const AsyncLoading();
   }
 
-  final baseBudget = baseBudgetAsync.valueOrNull ?? 1.0; // Avoid div by zero
-  final spentToday = spentTodayAsync.valueOrNull ?? 0.0;
+  final baseBudget = baseBudgetAsync.asData?.value ?? 1.0; // Avoid div by zero
+  final spentToday = spentTodayAsync.asData?.value ?? 0.0;
 
   if (baseBudget == 0) return const AsyncData(1.0); // 100% used if no budget
 
