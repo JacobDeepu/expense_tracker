@@ -61,6 +61,11 @@ class AppDatabase extends _$AppDatabase {
         colorHex: 'EF4444',
       ),
       CategoriesCompanion.insert(
+        name: 'Cash Spend',
+        iconKey: 'payments',
+        colorHex: '10B981',
+      ),
+      CategoriesCompanion.insert(
         name: 'Other',
         iconKey: 'category',
         colorHex: '6B7280',

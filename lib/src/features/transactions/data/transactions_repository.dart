@@ -19,10 +19,11 @@ class TransactionsRepository {
     int? categoryId,
   }) {
     // Default to 'Other' (ID 7) if no category provided
-    // In a real app, we should query for 'Other' ID or handle this dynamically
-    const int defaultCategoryId = 7; 
+    const int defaultCategoryId = 7;
 
-    return _db.into(_db.transactions).insert(
+    return _db
+        .into(_db.transactions)
+        .insert(
           TransactionsCompanion(
             amount: Value(amount),
             merchantName: Value(merchantName),
@@ -38,7 +39,7 @@ class TransactionsRepository {
   Stream<List<Transaction>> watchRecentTransactions() {
     return (_db.select(_db.transactions)
           ..orderBy([
-            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
           ])
           ..limit(20))
         .watch();
@@ -57,6 +58,14 @@ class TransactionsRepository {
     return query.watch().map((transactions) {
       return transactions.fold(0.0, (sum, t) => sum + t.amount);
     });
+  }
+
+  /// Watch all transactions sorted by date descending
+  Stream<List<Transaction>> watchAllTransactions() {
+    return (_db.select(_db.transactions)..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+        ]))
+        .watch();
   }
 
   Future<void> deleteTransaction(int id) {
