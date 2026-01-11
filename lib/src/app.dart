@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
 
 class ExpenseTrackerApp extends StatelessWidget {
   const ExpenseTrackerApp({super.key});
@@ -11,13 +11,15 @@ class ExpenseTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-    return MaterialApp(
+    final router = AppRouter.createRouter();
+
+    return MaterialApp.router(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      home: const DashboardScreen(),
+      routerConfig: router,
     );
   }
 }
