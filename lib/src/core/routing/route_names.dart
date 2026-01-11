@@ -5,5 +5,7 @@ abstract final class RouteNames {
   static const String reminderTime = '/reminder-time';
   static const String dashboard = '/';
   static const String addTransaction = '/add-transaction';
+  static const String transactions = '/transactions';
+  static const String insights = '/insights';
   static const String settings = '/settings';
 }

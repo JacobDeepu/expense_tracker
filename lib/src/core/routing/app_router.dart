@@ -3,11 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/insights/presentation/insights_screen.dart';
 import '../../features/onboarding/presentation/budget_setup_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/onboarding/presentation/reminder_time_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/transactions/presentation/add_transaction_sheet.dart';
+import '../../features/transactions/presentation/transactions_screen.dart';
 import 'route_names.dart';
 
 /// GoRouter configuration with first-run detection
@@ -41,10 +43,10 @@ class AppRouter {
         }
 
         // If not first run and on onboarding, redirect to dashboard
-        if (!isFirstRun && 
-           (state.matchedLocation == RouteNames.onboarding || 
-            state.matchedLocation == RouteNames.budgetSetup || 
-            state.matchedLocation == RouteNames.reminderTime)) {
+        if (!isFirstRun &&
+            (state.matchedLocation == RouteNames.onboarding ||
+                state.matchedLocation == RouteNames.budgetSetup ||
+                state.matchedLocation == RouteNames.reminderTime)) {
           return RouteNames.dashboard;
         }
 
@@ -66,10 +68,10 @@ class AppRouter {
             // Actually, we should mark it when they CLICK continue on reminder screen,
             // but for now, entering this screen implies they are in the final flow.
             // Better to keep the _markOnboardingComplete call inside the screen itself?
-            // For now, let's leave it here but it's triggered on page load. 
+            // For now, let's leave it here but it's triggered on page load.
             // Ideally, the ReminderScreen should call a provider to finish.
             // But to avoid complex refactor:
-            _markOnboardingComplete(); 
+            _markOnboardingComplete();
             return const ReminderTimeScreen();
           },
         ),
@@ -100,6 +102,14 @@ class AppRouter {
                 },
             transitionDuration: const Duration(milliseconds: 200),
           ),
+        ),
+        GoRoute(
+          path: RouteNames.transactions,
+          builder: (context, state) => const TransactionsScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.insights,
+          builder: (context, state) => const InsightsScreen(),
         ),
         GoRoute(
           path: RouteNames.settings,
