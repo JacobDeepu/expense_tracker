@@ -8,7 +8,7 @@ import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../onboarding/data/recurring_rules_repository.dart';
-import '../providers/dashboard_providers.dart';
+import '../../transactions/presentation/widgets/edit_transaction_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -120,32 +120,47 @@ class DashboardScreen extends ConsumerWidget {
                     itemCount: transactions.length,
                     itemBuilder: (context, index) {
                       final transaction = transactions[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            // Merchant name (left-aligned)
-                            Text(
-                              transaction.merchantName,
-                              style: AppTypography.bodyM(textPrimary),
-                            ),
-                            // Amount (right-aligned, monospace)
-                            Text(
-                              '-₹${transaction.amount.toStringAsFixed(2)}',
-                              style: GoogleFonts.robotoMono(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                                color: textPrimary,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 24),
+                                            child: InkWell(
+                                              onTap: () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  isScrollControlled: true,
+                                                  shape: const RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.vertical(
+                                                      top: Radius.circular(16),
+                                                    ),
+                                                  ),
+                                                  builder:
+                                                      (context) =>
+                                                          EditTransactionSheet(transaction: transaction),
+                                                );
+                                              },
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                                textBaseline: TextBaseline.alphabetic,
+                                                children: [
+                                                  // Merchant name (left-aligned)
+                                                  Text(
+                                                    transaction.merchantName,
+                                                    style: AppTypography.bodyM(textPrimary),
+                                                  ),
+                                                  // Amount (right-aligned, monospace)
+                                                  Text(
+                                                    '-₹${transaction.amount.toStringAsFixed(2)}',
+                                                    style: GoogleFonts.robotoMono(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w400,
+                                                      color: textPrimary,
+                                                      height: 1.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );                    },
                   ),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: Colors.red)),
