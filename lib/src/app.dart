@@ -18,7 +18,7 @@ class ExpenseTrackerApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark, // Enforce dark mode as per design
+      themeMode: ThemeMode.system, // Respect system theme
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: router,
