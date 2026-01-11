@@ -33,6 +33,12 @@ abstract final class AppTypography {
     ).copyWith(fontSize: 24, fontWeight: FontWeight.w600, height: 1.3);
   }
 
+  static TextStyle headingS(Color color) {
+    return _baseStyle(
+      color,
+    ).copyWith(fontSize: 20, fontWeight: FontWeight.w600, height: 1.3);
+  }
+
   static TextStyle bodyL(Color color) {
     return _baseStyle(
       color,
@@ -53,6 +59,25 @@ abstract final class AppTypography {
 
   static TextStyle captionUppercase(Color color) {
     return caption(color).copyWith(letterSpacing: 1.2);
+  }
+
+  static TextStyle bodyS(Color color) {
+    return _baseStyle(
+      color,
+    ).copyWith(fontSize: 14, fontWeight: FontWeight.w400, height: 1.5);
+  }
+
+  // Tabular numerals for financial data alignment
+  static TextStyle displayXLTabular(Color color) {
+    return displayXL(
+      color,
+    ).copyWith(fontFeatures: [const FontFeature.tabularFigures()]);
+  }
+
+  static TextStyle bodyMTabular(Color color) {
+    return bodyM(
+      color,
+    ).copyWith(fontFeatures: [const FontFeature.tabularFigures()]);
   }
 
   static TextTheme textTheme({

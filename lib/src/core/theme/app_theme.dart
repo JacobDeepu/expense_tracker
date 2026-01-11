@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 
-/// Swiss International Design Theme.
-/// Sharp corners (4px max), no shadows, high contrast, generous whitespace.
+/// Swiss International Design Theme with 2026 modern aesthetics.
+/// Subtle roundness (8-12px), subtle shadows, high contrast, generous whitespace.
 abstract final class AppTheme {
-  static const double _cornerRadius = 4.0;
+  static const double _cardRadius = 8.0;
+  static const double _buttonRadius = 12.0;
+  static const double _sheetRadius = 16.0;
 
   static ThemeData light() {
     return ThemeData(
@@ -52,9 +54,9 @@ abstract final class AppTheme {
           backgroundColor: AppColors.signalBlueLight,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_cornerRadius),
+            borderRadius: BorderRadius.circular(_buttonRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -64,34 +66,75 @@ abstract final class AppTheme {
           foregroundColor: AppColors.textPrimaryLight,
           side: const BorderSide(color: AppColors.textPrimaryLight, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_cornerRadius),
+            borderRadius: BorderRadius.circular(_buttonRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        filled: false,
-        border: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.textPrimaryLight, width: 2),
+        filled: true,
+        fillColor: AppColors.surfaceSecondaryLight,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide.none,
         ),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.textPrimaryLight, width: 2),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide.none,
         ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.signalBlueLight, width: 2),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: const BorderSide(
+            color: AppColors.signalBlueLight,
+            width: 1.5,
+          ),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: const BorderSide(
+            color: AppColors.signalRedLight,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         labelStyle: AppTypography.bodyM(AppColors.textSecondaryLight),
+        hintStyle: AppTypography.bodyM(AppColors.textSecondaryLight),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 2, // Subtle shadow for depth
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_cornerRadius),
-          side: const BorderSide(color: AppColors.borderLight),
+          borderRadius: BorderRadius.circular(_cardRadius),
         ),
         color: AppColors.surfacePrimaryLight,
         margin: EdgeInsets.zero,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        selectedItemColor: AppColors.signalBlueLight,
+        unselectedItemColor: AppColors.textSecondaryLight,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(_sheetRadius),
+          ),
+        ),
+        backgroundColor: AppColors.surfacePrimaryLight,
       ),
     );
   }
@@ -140,9 +183,9 @@ abstract final class AppTheme {
           backgroundColor: AppColors.signalBlueDark,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_cornerRadius),
+            borderRadius: BorderRadius.circular(_buttonRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -152,34 +195,75 @@ abstract final class AppTheme {
           foregroundColor: AppColors.textPrimaryDark,
           side: const BorderSide(color: AppColors.textPrimaryDark, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_cornerRadius),
+            borderRadius: BorderRadius.circular(_buttonRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        filled: false,
-        border: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.textPrimaryDark, width: 2),
+        filled: true,
+        fillColor: AppColors.surfaceSecondaryDark,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide.none,
         ),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.textPrimaryDark, width: 2),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide.none,
         ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.signalBlueDark, width: 2),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: const BorderSide(
+            color: AppColors.signalBlueDark,
+            width: 1.5,
+          ),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: const BorderSide(
+            color: AppColors.signalRedDark,
+            width: 1.5,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         labelStyle: AppTypography.bodyM(AppColors.textSecondaryDark),
+        hintStyle: AppTypography.bodyM(AppColors.textSecondaryDark),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 2, // Subtle shadow for depth
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_cornerRadius),
-          side: const BorderSide(color: AppColors.borderDark),
+          borderRadius: BorderRadius.circular(_cardRadius),
         ),
         color: AppColors.surfacePrimaryDark,
         margin: EdgeInsets.zero,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        selectedItemColor: AppColors.signalBlueDark,
+        unselectedItemColor: AppColors.textSecondaryDark,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(_sheetRadius),
+          ),
+        ),
+        backgroundColor: AppColors.surfacePrimaryDark,
       ),
     );
   }
