@@ -44,19 +44,60 @@ class ReceiptScannerService {
   }
 
   double? _extractTotalAmount(String text) {
-    // Look for lines containing "Total" and a number
     final lines = text.split('\n');
-    for (final line in lines.reversed) { // Totals are usually at the bottom
-      if (line.toLowerCase().contains('total')) {
-        // Regex to find number
-        final match = RegExp(r'(?:[\d,]+\.\d{2})').firstMatch(line);
-        if (match != null) {
-           String numStr = match.group(0)!.replaceAll(',', '');
-           return double.tryParse(numStr);
-        }
+    double? maxAmount;
+    
+    // 1. Look for explicit total keywords
+    final totalKeywords = ['total', 'amount payable', 'grand total', 'net amount', 'payable'];
+    
+    for (final line in lines.reversed) {
+      final lowerLine = line.toLowerCase();
+      
+      // Check if line contains a keyword
+      bool hasKeyword = totalKeywords.any((k) => lowerLine.contains(k));
+      
+      if (hasKeyword) {
+        final amount = _parseAmountFromLine(line);
+        if (amount != null) return amount;
       }
     }
-    return null;
+
+    // 2. Fallback: Scan bottom 50% of lines for largest valid amount
+    // (Receipts usually have total at bottom)
+    final int startIdx = (lines.length * 0.5).floor();
+    for (int i = startIdx; i < lines.length; i++) {
+       final amount = _parseAmountFromLine(lines[i]);
+       if (amount != null) {
+         if (maxAmount == null || amount > maxAmount) {
+           maxAmount = amount;
+         }
+       }
+    }
+
+    return maxAmount;
+  }
+
+  double? _parseAmountFromLine(String line) {
+     // Regex for currency amounts: 
+     // Optional currency symbol (₹, Rs, INR)
+     // Number with optional commas and decimals
+     final regex = RegExp(r'(?:₹|Rs\.?|INR)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)');
+     
+     final matches = regex.allMatches(line);
+     for (final match in matches) {
+       String numStr = match.group(1)?.replaceAll(',', '') ?? '';
+       final amount = double.tryParse(numStr);
+       
+       if (amount != null) {
+         // Filter out unlikely amounts (dates, phone numbers, years)
+         if (amount > 1000000) continue; // Unlikely for daily receipt
+         if (amount == 2023 || amount == 2024 || amount == 2025) continue; // Year check
+         // Phone number check (simple length check not enough, but >1000000 covers 10 digits)
+         
+         return amount;
+       }
+     }
+     return null;
   }
 
   DateTime? _extractDate(String text) {

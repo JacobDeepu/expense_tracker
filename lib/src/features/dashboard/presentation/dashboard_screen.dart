@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/routing/route_names.dart';
-
+import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../onboarding/data/recurring_rules_repository.dart';
 import '../providers/dashboard_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -178,13 +179,12 @@ class DashboardScreen extends ConsumerWidget {
       ),
       builder: (context) => Consumer(
         builder: (context, ref, _) {
-           // We need to re-fetch or watch these values to display them
            final prefs = ref.watch(preferencesServiceProvider);
            final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
            final spentTodayAsync = ref.watch(spentTodayProvider);
            
-           return FutureBuilder(
-             future: Future.wait([
+           return FutureBuilder<List<dynamic>>(
+             future: Future.wait<dynamic>([
                prefs.getMonthlyBudget(),
                recurringRepo.getTotalMonthlyAmount(),
              ]),
@@ -193,9 +193,13 @@ class DashboardScreen extends ConsumerWidget {
                
                final budget = (snapshot.data![0] as double?) ?? 0.0;
                final recurring = (snapshot.data![1] as double);
-               final spent = spentTodayAsync.valueOrNull ?? 0.0;
+               final spent = spentTodayAsync.asData?.value ?? 0.0;
                final dailyBase = (budget - recurring) / 30;
                final remaining = dailyBase - spent;
+
+               // Get correct text color
+               final isDark = Theme.of(context).brightness == Brightness.dark;
+               final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
 
                return Padding(
                  padding: const EdgeInsets.all(24.0),
@@ -203,14 +207,14 @@ class DashboardScreen extends ConsumerWidget {
                    mainAxisSize: MainAxisSize.min,
                    crossAxisAlignment: CrossAxisAlignment.start,
                    children: [
-                     Text('Limit Calculation', style: AppTypography.displayL(AppColors.textPrimaryDark)), // Use dynamic color in real app
+                     Text('Limit Calculation', style: AppTypography.displayL(textPrimary)),
                      const SizedBox(height: 16),
                      _buildRow('Monthly Budget', '+ ₹${budget.toStringAsFixed(0)}'),
                      _buildRow('Fixed Expenses', '- ₹${recurring.toStringAsFixed(0)}'),
                      const Divider(),
                      _buildRow('Disposable Income', '= ₹${(budget - recurring).toStringAsFixed(0)}'),
                      const SizedBox(height: 8),
-                     Text('Divided by 30 days = ₹${dailyBase.toStringAsFixed(0)} / day', style: AppTypography.bodyS(Colors.grey)),
+                     Text('Divided by 30 days = ₹${dailyBase.toStringAsFixed(0)} / day', style: AppTypography.bodyM(Colors.grey)),
                      const SizedBox(height: 16),
                      _buildRow('Spent Today', '- ₹${spent.toStringAsFixed(0)}'),
                      const Divider(),

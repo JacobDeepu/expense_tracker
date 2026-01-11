@@ -1350,11 +1350,7 @@ class RecurringRule extends DataClass implements Insertable<RecurringRule> {
   final int id;
   final String name;
   final double estimatedAmount;
-
-  /// Day of month when the expense typically occurs (1-31)
   final int? dayOfMonth;
-
-  /// Frequency in days (30 = monthly, 7 = weekly, etc.)
   final int frequencyDays;
   final int? categoryId;
   const RecurringRule({
