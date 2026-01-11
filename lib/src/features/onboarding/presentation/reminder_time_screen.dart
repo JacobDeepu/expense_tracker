@@ -30,13 +30,22 @@ class _ReminderTimeScreenState extends ConsumerState<ReminderTimeScreen> {
     final prefsService = ref.read(preferencesServiceProvider);
     final reminderService = ref.read(reminderServiceProvider);
 
-    // Save reminder time
-    await prefsService.saveReminderTime(_selectedTime);
-    debugPrint('Reminder time saved');
+    try {
+      // 1. Request Permission
+      await reminderService.requestPermissions();
+      
+      // 2. Save reminder time
+      await prefsService.saveReminderTime(_selectedTime);
+      debugPrint('Reminder time saved');
 
-    // Schedule daily notification
-    await reminderService.scheduleDailyReminder(_selectedTime);
-    debugPrint('Notification scheduled (or skipped if permission denied)');
+      // 3. Schedule daily notification
+      await reminderService.scheduleDailyReminder(_selectedTime);
+      debugPrint('Notification scheduled');
+      
+    } catch (e) {
+      debugPrint('Error during reminder setup: $e');
+      // Proceed anyway
+    }
 
     if (mounted) {
       debugPrint('Navigating to dashboard');
