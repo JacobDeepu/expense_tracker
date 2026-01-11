@@ -92,7 +92,8 @@ class ReminderService {
         'Take 5 seconds to record it.',
         scheduledDate,
         details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        // Use inexact to avoid SCHEDULE_EXACT_ALARM permission crash on Android 12+
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
