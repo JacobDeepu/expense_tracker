@@ -3,7 +3,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/preferences_service.dart';
 
 class ReminderService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =

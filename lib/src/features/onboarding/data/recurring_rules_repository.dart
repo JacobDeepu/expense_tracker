@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/local/database.dart';
-import '../../../data/local/tables.dart';
 import '../../../data/local/database_provider.dart';
 import 'onboarding_data.dart';
 
