@@ -6,6 +6,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/onboarding/presentation/budget_setup_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/onboarding/presentation/reminder_time_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/transactions/presentation/add_transaction_sheet.dart';
 import 'route_names.dart';
 
@@ -99,6 +100,10 @@ class AppRouter {
                 },
             transitionDuration: const Duration(milliseconds: 200),
           ),
+        ),
+        GoRoute(
+          path: RouteNames.settings,
+          builder: (context, state) => const SettingsScreen(),
         ),
       ],
     );

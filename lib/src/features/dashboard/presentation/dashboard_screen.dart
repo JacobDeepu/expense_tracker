@@ -41,34 +41,48 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               const SizedBox(height: 64),
               // Header Section
-              Text(
-                'SAFE TO SPEND',
-                style: AppTypography.captionUppercase(textSecondary),
-              ),
-              const SizedBox(height: 8),
-              
-              // Safe Limit Value (Tappable for explainer)
-              InkWell(
-                onTap: () => _showLimitExplainer(context, ref),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      dailyLimitAsync.when(
-                        data: (limit) => Text(
-                          '₹${limit.toStringAsFixed(0)}',
-                          style: AppTypography.displayXL(textPrimary),
-                        ),
-                        loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
-                        error: (e, s) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
+                      Text(
+                        'SAFE TO SPEND',
+                        style: AppTypography.captionUppercase(textSecondary),
                       ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.info_outline, size: 20, color: textSecondary),
+                      const SizedBox(height: 8),
+                      
+                      // Safe Limit Value (Tappable for explainer)
+                      InkWell(
+                        onTap: () => _showLimitExplainer(context, ref),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              dailyLimitAsync.when(
+                                data: (limit) => Text(
+                                  '₹${limit.toStringAsFixed(0)}',
+                                  style: AppTypography.displayXL(textPrimary),
+                                ),
+                                loading: () => Text('...', style: AppTypography.displayXL(textPrimary)),
+                                error: (e, s) => Text('₹--', style: AppTypography.displayXL(textPrimary)),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.info_outline, size: 20, color: textSecondary),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                  IconButton(
+                    onPressed: () => context.push(RouteNames.settings),
+                    icon: Icon(Icons.settings_outlined, color: textSecondary),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 16),
