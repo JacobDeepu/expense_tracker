@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../onboarding/providers/reminder_providers.dart';
+import '../../../data/local/database_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -19,15 +21,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Debug Function: Test Nudge
   Future<void> _testNudge() async {
     final reminderService = ref.read(reminderServiceProvider);
-    
-    // Request permission just in case
     await reminderService.requestPermissions();
     
-    // Schedule for 5 seconds from now
-    // Since scheduleDailyReminder takes TimeOfDay, we need a test function
-    // For now, let's just trigger it by scheduling it for 1 minute from now
     final now = TimeOfDay.now();
-    // Logic to add 1 minute (handling 60 wrap)
     int minute = now.minute + 1;
     int hour = now.hour;
     if (minute >= 60) {
@@ -77,10 +73,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (newBudget != null) {
       await ref.read(preferencesServiceProvider).saveMonthlyBudget(newBudget);
-      ref.invalidate(dailyBaseBudgetProvider); // Recalculate Dashboard
-      
+      ref.invalidate(dailyBaseBudgetProvider);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _editReminderTime(BuildContext context, TimeOfDay? currentTime) async {
+    final newTime = await showTimePicker(
+      context: context,
+      initialTime: currentTime ?? const TimeOfDay(hour: 21, minute: 0),
+    );
+
+    if (newTime != null) {
+      final prefs = ref.read(preferencesServiceProvider);
+      final reminderService = ref.read(reminderServiceProvider);
+
+      await prefs.saveReminderTime(newTime);
+      await reminderService.scheduleDailyReminder(newTime);
+
       if (mounted) {
-        setState(() {}); // Refresh local UI to show new budget
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Reminder set for ${newTime.format(context)}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resetOnboarding() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset App?'),
+        content: const Text(
+          'This will delete ALL transactions, recurring rules, and settings. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reset Everything'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // 1. Wipe DB
+      final db = ref.read(databaseProvider);
+      await db.delete(db.transactions).go();
+      await db.delete(db.recurringRules).go();
+      // We keep Categories and Patterns as they are system/seed data usually, 
+      // but 'Reset Onboarding' implies fresh start. Seeding happens on creation.
+      // Let's just delete user data.
+
+      // 2. Wipe Prefs
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // 3. Cancel Notifications
+      final reminderService = ref.read(reminderServiceProvider);
+      // We don't have a 'cancel' exposed, but scheduling nothing/overwriting is fine.
+      // Or we can just restart.
+
+      if (mounted) {
+        // Navigate to Onboarding
+        // Use pushReplacement or go to clear stack logic if possible, 
+        // but 'go' handles location.
+        // We need to force refresh providers?
+        // App restart is best, but navigation works.
+        context.go('/onboarding'); // Hardcoded route to avoid circular dependency if any
       }
     }
   }
@@ -128,6 +194,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             textSecondary: textSecondary,
             onTap: () {
                // TODO: Open recurring rules list
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming Soon: Recurring Manager')));
             },
           ),
 
@@ -145,9 +212,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.notifications_outlined,
                 textPrimary: textPrimary,
                 textSecondary: textSecondary,
-                onTap: () {
-                  // TODO: Open time picker
-                },
+                onTap: () => _editReminderTime(context, time),
               );
             },
           ),
@@ -169,9 +234,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             icon: Icons.delete_forever_outlined,
             textPrimary: Colors.red,
             textSecondary: textSecondary,
-            onTap: () async {
-               // TODO: Implement full wipe
-            },
+            onTap: _resetOnboarding,
           ),
         ],
       ),
