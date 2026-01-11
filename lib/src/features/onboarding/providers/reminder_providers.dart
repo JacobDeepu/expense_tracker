@@ -1,37 +1,88 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../core/services/preferences_service.dart';
-import '../../../core/services/reminder_service.dart';
 
-/// Provider for preferences service
-final preferencesServiceProvider = Provider<PreferencesService>((ref) {
-  return PreferencesService();
-});
+class ReminderService {
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
-/// Provider for reminder service
+  ReminderService() {
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    tz.initializeTimeZones();
+    
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+
+    await _notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) {
+        // Handle notification tap logic here
+      },
+    );
+  }
+
+  Future<void> scheduleDailyReminder(TimeOfDay time) async {
+    await _notificationsPlugin.cancelAll(); // Cancel existing
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'daily_reminder',
+      'Daily Spending Check',
+      channelDescription: 'Reminds you to record cash spending',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _notificationsPlugin.zonedSchedule(
+      0,
+      'Did you spend cash today?',
+      'Take 5 seconds to record it.',
+      scheduledDate,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+    );
+  }
+}
+
 final reminderServiceProvider = Provider<ReminderService>((ref) {
   return ReminderService();
-});
-
-/// Provider to check if user has logged today (mock)
-final hasLoggedTodayProvider = FutureProvider<bool>((ref) async {
-  final prefsService = ref.watch(preferencesServiceProvider);
-  return await prefsService.hasLoggedToday();
-});
-
-/// Provider to check if should show transaction card automatically
-final shouldShowTransactionCardProvider = FutureProvider<bool>((ref) async {
-  final prefsService = ref.watch(preferencesServiceProvider);
-
-  // Check if reminder is set
-  final isReminderSet = await prefsService.isReminderSet();
-  if (!isReminderSet) return false;
-
-  // Check if current time is after reminder time
-  final isAfterReminder = await prefsService.isAfterReminderTime();
-  if (!isAfterReminder) return false;
-
-  // Check if user has already logged today
-  final hasLogged = await prefsService.hasLoggedToday();
-  return !hasLogged; // Show card if NOT logged yet
 });
