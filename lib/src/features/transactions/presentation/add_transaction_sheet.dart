@@ -9,6 +9,7 @@ import '../../../data/local/database.dart'; // Import for Category type
 import '../../../data/local/tables.dart'; // For TransactionType/Source enums
 import '../data/categories_repository.dart';
 import '../data/transactions_repository.dart';
+import '../logic/ocr/receipt_scanner_service.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
   const AddTransactionSheet({super.key});
@@ -21,6 +22,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
 class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final TextEditingController _amountController = TextEditingController();
   Category? _selectedCategory;
+  bool _isScanning = false;
 
   @override
   void initState() {
@@ -35,6 +37,36 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   void dispose() {
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleScan() async {
+    setState(() => _isScanning = true);
+    try {
+      final result = await ref.read(receiptScannerServiceProvider).scanReceipt();
+      
+      if (result != null && result.amount != null) {
+        setState(() {
+          _amountController.text = result.amount!.toStringAsFixed(0);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Detected Amount: ₹${result.amount}')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not detect total amount')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Scan error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
   }
 
   Future<void> _handleSave() async {
@@ -58,7 +90,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           amount: amount,
           merchantName: 'Cash Spend', // Default for manual entry
           date: DateTime.now(),
-          source: TransactionSource.manual,
+          source: TransactionSource.manual, // TODO: Update to OCR if scanned
           type: TransactionType.expense,
           categoryId: _selectedCategory!.id,
         );
@@ -112,28 +144,43 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 const SizedBox(height: 64),
 
                 // Amount Input (Massive, centered)
-                TextField(
-                  controller: _amountController,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  textAlign: TextAlign.center,
-                  style: AppTypography.displayXL(
-                    textPrimary,
-                  ).copyWith(fontSize: 64, letterSpacing: -1),
-                  decoration: InputDecoration(
-                    hintText: '₹0',
-                    hintStyle: AppTypography.displayXL(
-                      textSecondary,
-                    ).copyWith(fontSize: 64, letterSpacing: -1),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    prefixText: '₹', // Clean currency symbol
-                    prefixStyle: AppTypography.displayXL(
-                      textPrimary,
-                    ).copyWith(fontSize: 64, letterSpacing: -1),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                     Expanded(
+                       child: TextField(
+                        controller: _amountController,
+                        autofocus: true,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        textAlign: TextAlign.center,
+                        style: AppTypography.displayXL(
+                          textPrimary,
+                        ).copyWith(fontSize: 64, letterSpacing: -1),
+                        decoration: InputDecoration(
+                          hintText: '₹0',
+                          hintStyle: AppTypography.displayXL(
+                            textSecondary,
+                          ).copyWith(fontSize: 64, letterSpacing: -1),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          prefixText: '₹', // Clean currency symbol
+                          prefixStyle: AppTypography.displayXL(
+                            textPrimary,
+                          ).copyWith(fontSize: 64, letterSpacing: -1),
+                        ),
+                                           ),
+                     ),
+                    // Scan Button
+                    IconButton(
+                      onPressed: _isScanning ? null : _handleScan,
+                      icon: _isScanning 
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Icons.camera_alt_outlined, size: 32, color: signalBlue),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 64),
