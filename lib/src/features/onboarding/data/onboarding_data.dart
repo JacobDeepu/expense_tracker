@@ -1,78 +1,77 @@
+/// Frequency options for recurring expenses
+enum ExpenseFrequency {
+  daily(1, 'Daily', '/day'),
+  weekly(7, 'Weekly', '/week'),
+  monthly(30, 'Monthly', '/month'),
+  yearly(365, 'Yearly', '/year');
+
+  final int days;
+  final String label;
+  final String suffix;
+
+  const ExpenseFrequency(this.days, this.label, this.suffix);
+}
+
 /// Onboarding card data model
 class OnboardingCard {
   final String name;
   final double estimatedAmount;
   final String category;
+  final ExpenseFrequency frequency;
   final String? description;
-  final String imagePath;
 
   const OnboardingCard({
     required this.name,
     required this.estimatedAmount,
     required this.category,
+    this.frequency = ExpenseFrequency.monthly,
     this.description,
-    this.imagePath = 'assets/images/placeholder.jpg',
   });
 
   String get formattedAmount => '₹${estimatedAmount.toStringAsFixed(0)}';
+
+  String get formattedAmountWithFrequency =>
+      '₹${estimatedAmount.toStringAsFixed(0)} ${frequency.suffix}';
+
+  /// Create a copy with updated values (for editing)
+  OnboardingCard copyWith({
+    String? name,
+    double? estimatedAmount,
+    String? category,
+    ExpenseFrequency? frequency,
+    String? description,
+  }) {
+    return OnboardingCard(
+      name: name ?? this.name,
+      estimatedAmount: estimatedAmount ?? this.estimatedAmount,
+      category: category ?? this.category,
+      frequency: frequency ?? this.frequency,
+      description: description ?? this.description,
+    );
+  }
 }
 
-/// Sample onboarding cards with common Indian expenses
-final List<OnboardingCard> sampleOnboardingCards = [
-  const OnboardingCard(
-    name: 'Rent',
-    estimatedAmount: 15000,
-    category: 'Housing',
-    description: 'Monthly rent payment',
-    imagePath: 'assets/images/onboarding/rent.jpg',
-  ),
-  const OnboardingCard(
-    name: 'Netflix',
-    estimatedAmount: 649,
-    category: 'Entertainment',
-    description: 'Streaming subscription',
-    imagePath: 'assets/images/onboarding/netflix.jpg',
-  ),
-  const OnboardingCard(
-    name: 'Gym Membership',
-    estimatedAmount: 2500,
-    category: 'Health & Fitness',
-    description: 'Monthly gym fees',
-    imagePath: 'assets/images/onboarding/gym.jpg',
-  ),
+/// Core onboarding cards - universal expenses most people have
+final List<OnboardingCard> coreOnboardingCards = [
   const OnboardingCard(
     name: 'Groceries',
     estimatedAmount: 5000,
     category: 'Food & Dining',
+    frequency: ExpenseFrequency.monthly,
     description: 'Monthly grocery budget',
-    imagePath: 'assets/images/onboarding/groceries.jpg',
   ),
   const OnboardingCard(
     name: 'Transportation',
     estimatedAmount: 3000,
     category: 'Transportation',
-    description: 'Ola, Uber, Metro',
-    imagePath: 'assets/images/onboarding/transport.jpg',
+    frequency: ExpenseFrequency.monthly,
+    description: 'Fuel, Ola, Uber, Metro',
   ),
   const OnboardingCard(
-    name: 'Electricity Bill',
-    estimatedAmount: 1200,
+    name: 'Mobile & Internet',
+    estimatedAmount: 1000,
     category: 'Utilities',
-    description: 'Monthly electricity',
-    imagePath: 'assets/images/onboarding/electricity.jpg',
-  ),
-  const OnboardingCard(
-    name: 'Internet',
-    estimatedAmount: 799,
-    category: 'Utilities',
-    description: 'Broadband connection',
-    imagePath: 'assets/images/onboarding/internet.jpg',
-  ),
-  const OnboardingCard(
-    name: 'Spotify',
-    estimatedAmount: 119,
-    category: 'Entertainment',
-    description: 'Music streaming',
-    imagePath: 'assets/images/onboarding/spotify.jpg',
+    frequency: ExpenseFrequency.monthly,
+    description: 'Phone and broadband bills',
   ),
 ];
