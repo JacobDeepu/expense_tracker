@@ -22,9 +22,18 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> {
   void initState() {
     super.initState();
     _router = AppRouter.createRouter();
-    
-    // Listen for notification taps
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Listen for notification taps after widget is built
     final reminderService = ref.read(reminderServiceProvider);
+
+    // Initialize notifications
+    reminderService.initializeNotifications();
+
     reminderService.onTap.listen((payload) {
       if (payload == 'daily_entry') {
         // Navigate to Add Transaction screen
@@ -41,7 +50,7 @@ class _ExpenseTrackerAppState extends ConsumerState<ExpenseTrackerApp> {
     return MaterialApp.router(
       title: 'Expense Tracker',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system, 
+      themeMode: ThemeMode.system,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: _router,

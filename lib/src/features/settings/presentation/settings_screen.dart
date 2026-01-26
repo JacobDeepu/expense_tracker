@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/services/preferences_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import 'developer_options_screen.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../onboarding/providers/reminder_providers.dart';
 import '../../../data/local/database_provider.dart';
@@ -32,10 +33,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
       return;
     }
-    await reminderService.showTestNotification();
+    await reminderService.scheduleTestReminder();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sent immediate test notification')),
+        const SnackBar(content: Text('Test notification scheduled in 10s...')),
       );
     }
   }
@@ -100,7 +101,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (newBudget != null) {
       await ref.read(preferencesServiceProvider).saveMonthlyBudget(newBudget);
-      ref.invalidate(dailyBaseBudgetProvider);
+      ref.invalidate(monthlyBudgetProvider);
       if (mounted) setState(() {});
     }
   }
@@ -301,6 +302,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             textSecondary: textSecondary,
             isDark: isDark,
             onTap: _testNudge,
+          ),
+          _buildListTile(
+            title: 'Developer Options',
+            subtitle: 'Regex simulation tool',
+            icon: LucideIcons.code,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+            isDark: isDark,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DeveloperOptionsScreen(),
+                ),
+              );
+            },
           ),
           _buildListTile(
             title: 'Reset Onboarding',

@@ -168,82 +168,85 @@ class _ReminderStepState extends ConsumerState<ReminderStep> {
         const Spacer(),
 
         // Time Picker Display
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Hours
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onVerticalDragUpdate: (details) =>
-                  _updateTime(details.delta.dy, isHour: true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                child: Text(
-                  _selectedTime.hourOfPeriod.toString().padLeft(2, '0'),
-                  style: AppTypography.displayXL(
-                    textColor,
-                  ).copyWith(fontSize: 96),
-                ),
-              ),
-            ),
-
-            Text(
-              ':',
-              style: AppTypography.displayXL(
-                textColor,
-              ).copyWith(fontSize: 96, height: 0.8),
-            ),
-
-            // Minutes
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onVerticalDragUpdate: (details) =>
-                  _updateTime(details.delta.dy, isHour: false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                child: Text(
-                  _selectedTime.minute.toString().padLeft(2, '0'),
-                  style: AppTypography.displayXL(
-                    textColor,
-                  ).copyWith(fontSize: 96),
-                ),
-              ),
-            ),
-
-            // AM/PM
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'AM',
-                    style: AppTypography.headingS(
-                      _selectedTime.period == DayPeriod.am
-                          ? textColor
-                          : textColor.withValues(alpha: 0.3),
-                    ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Hours
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragUpdate: (details) =>
+                    _updateTime(details.delta.dy, isHour: true),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 24,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'PM',
-                    style: AppTypography.headingS(
-                      _selectedTime.period == DayPeriod.pm
-                          ? textColor
-                          : textColor.withValues(alpha: 0.3),
-                    ),
+                  child: Text(
+                    _selectedTime.hourOfPeriod.toString().padLeft(2, '0'),
+                    style: AppTypography.displayXL(
+                      textColor,
+                    ).copyWith(fontSize: 88),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+
+              Text(
+                ':',
+                style: AppTypography.displayXL(
+                  textColor,
+                ).copyWith(fontSize: 88, height: 0.8),
+              ),
+
+              // Minutes
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragUpdate: (details) =>
+                    _updateTime(details.delta.dy, isHour: false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 24,
+                  ),
+                  child: Text(
+                    _selectedTime.minute.toString().padLeft(2, '0'),
+                    style: AppTypography.displayXL(
+                      textColor,
+                    ).copyWith(fontSize: 88),
+                  ),
+                ),
+              ),
+
+              // AM/PM
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24, left: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'AM',
+                      style: AppTypography.headingS(
+                        _selectedTime.period == DayPeriod.am
+                            ? textColor
+                            : textColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'PM',
+                      style: AppTypography.headingS(
+                        _selectedTime.period == DayPeriod.pm
+                            ? textColor
+                            : textColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
 
         const SizedBox(height: 16),
