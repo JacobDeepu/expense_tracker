@@ -6,6 +6,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/insights/presentation/insights_screen.dart';
 import '../../features/onboarding/presentation/onboarding_flow_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/settings/presentation/recurring_expenses_screen.dart';
 import '../../features/transactions/presentation/add_transaction_sheet.dart';
 import '../../features/transactions/presentation/transactions_screen.dart';
 import 'route_names.dart';
@@ -89,6 +90,11 @@ class AppRouter {
           path: RouteNames.settings,
           name: RouteNames.settings,
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.recurring,
+          name: RouteNames.recurring,
+          builder: (context, state) => const RecurringExpensesScreen(),
         ),
       ],
     );

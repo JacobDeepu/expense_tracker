@@ -8,4 +8,5 @@ abstract final class RouteNames {
   static const String transactions = '/transactions';
   static const String insights = '/insights';
   static const String settings = '/settings';
+  static const String recurring = '/settings/recurring';
 }

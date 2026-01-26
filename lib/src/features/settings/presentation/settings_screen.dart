@@ -252,9 +252,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             textSecondary: textSecondary,
             isDark: isDark,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming Soon: Recurring Manager')),
-              );
+              context.push('/settings/recurring');
             },
           ),
 
