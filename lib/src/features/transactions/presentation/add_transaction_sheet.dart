@@ -12,9 +12,21 @@ import '../../../data/local/tables.dart';
 import '../data/categories_repository.dart';
 import '../data/transactions_repository.dart';
 import '../logic/ocr/receipt_scanner_service.dart';
+import 'ocr_review_sheet.dart';
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
-  const AddTransactionSheet({super.key});
+  final int? recurringRuleId;
+  final String? initialAmount;
+  final String? initialMerchant;
+  final int? initialCategoryId;
+
+  const AddTransactionSheet({
+    this.recurringRuleId,
+    this.initialAmount,
+    this.initialMerchant,
+    this.initialCategoryId,
+    super.key,
+  });
 
   @override
   ConsumerState<AddTransactionSheet> createState() =>
@@ -22,10 +34,33 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
 }
 
 class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _merchantController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _merchantController;
   Category? _selectedCategory;
+  TransactionType _type = TransactionType.expense;
   bool _isScanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(text: widget.initialAmount);
+    _merchantController = TextEditingController(text: widget.initialMerchant);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_selectedCategory == null && widget.initialCategoryId != null) {
+      ref.watch(categoriesListProvider).whenData((categories) {
+        setState(() {
+          _selectedCategory = categories.firstWhere(
+            (c) => c.id == widget.initialCategoryId,
+            orElse: () => categories.first,
+          );
+        });
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -56,18 +91,29 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           .read(receiptScannerServiceProvider)
           .scanReceipt();
 
-      if (result != null && result.amount != null) {
-        setState(() {
-          _amountController.text = result.amount!.toStringAsFixed(0);
-        });
+      if (result != null) {
+        // Close current sheet
+        if (mounted) context.pop();
+
+        // Navigate to review sheet
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Detected Amount: ₹${result.amount}')),
+          await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            builder: (context) => OcrReviewSheet(
+              scanResult: result,
+              recurringRuleId: widget.recurringRuleId,
+            ),
           );
         }
       }
     } catch (e) {
       debugPrint('Scan error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Scan error: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() => _isScanning = false);
@@ -91,7 +137,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (amount == null) return;
 
     final merchantName = _merchantController.text.isEmpty
-        ? 'Cash Spend'
+        ? (_type == TransactionType.income ? 'Income' : 'Cash Spend')
         : _merchantController.text;
 
     await ref
@@ -101,8 +147,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           merchantName: merchantName,
           date: DateTime.now(),
           source: TransactionSource.manual,
-          type: TransactionType.expense,
+          type: _type,
           categoryId: _selectedCategory!.id,
+          recurringRuleId: widget.recurringRuleId,
         );
 
     if (mounted) {
@@ -123,6 +170,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ? AppColors.surfaceSecondaryDark
         : AppColors.surfaceSecondaryLight;
     final border = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final signalGreen = isDark
+        ? AppColors.insightPositiveDark
+        : AppColors.insightPositiveLight;
+    final signalRed = isDark
+        ? AppColors.signalRedDark
+        : AppColors.signalRedLight;
 
     final categoriesAsync = ref.watch(categoriesListProvider);
 
@@ -140,7 +193,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'New Expense',
+                    'Add Transaction',
                     style: AppTypography.headingM(textPrimary),
                   ),
                   IconButton(
@@ -148,6 +201,68 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     icon: Icon(LucideIcons.x, color: textSecondary),
                   ),
                 ],
+              ),
+            ),
+
+            // Type Toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _type = TransactionType.expense),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _type == TransactionType.expense
+                                ? signalRed
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Expense',
+                            style: AppTypography.bodyM(
+                              _type == TransactionType.expense
+                                  ? Colors.white
+                                  : textSecondary,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _type = TransactionType.income),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _type == TransactionType.income
+                                ? signalGreen
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Income',
+                            style: AppTypography.bodyM(
+                              _type == TransactionType.income
+                                  ? Colors.white
+                                  : textSecondary,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -423,7 +538,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   children: [
                     const Icon(LucideIcons.check, size: 20),
                     const SizedBox(width: 8),
-                    const Text('Save Expense'),
+                    Text(
+                      _type == TransactionType.expense
+                          ? 'Save Expense'
+                          : 'Save Income',
+                    ),
                   ],
                 ),
               ),
