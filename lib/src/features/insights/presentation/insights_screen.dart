@@ -8,8 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/animations.dart';
 import '../../../core/widgets/charts.dart';
 import '../../../core/utils/category_icons.dart';
-import '../../../core/services/preferences_service.dart';
-import '../../onboarding/data/recurring_rules_repository.dart';
+
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../providers/insights_providers.dart';
 
@@ -125,71 +124,79 @@ class InsightsScreen extends ConsumerWidget {
     Color textSecondary,
     Color surface,
   ) {
-    return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        ref.read(preferencesServiceProvider).getMonthlyBudget(),
-        ref.read(recurringRulesRepositoryProvider).getTotalMonthlyAmount(),
-      ]),
-      builder: (context, snapshot) {
-        final budget = (snapshot.data?[0] as double?) ?? 30000.0;
-        final fixed = (snapshot.data?[1] as double?) ?? 5000.0;
+    final budgetAsync = ref.watch(monthlyBudgetProvider);
+    final recurringAsync = ref.watch(activeRecurringTotalProvider);
+    final expensesAsync = ref.watch(monthlyExpensesProvider);
 
-        final spentAsync = ref.watch(spentTodayProvider);
-        final spent = spentAsync.asData?.value ?? 0.0;
+    final budget = budgetAsync.asData?.value ?? 0.0;
+    final fixed = recurringAsync.asData?.value ?? 0.0;
+    final variableSpent = expensesAsync.asData?.value ?? 0.0;
 
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
+    if (budgetAsync.isLoading ||
+        recurringAsync.isLoading ||
+        expensesAsync.isLoading) {
+      return Container(
+        height: 280,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final remaining = budget - fixed - variableSpent;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(LucideIcons.pieChart, color: textSecondary, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Monthly Budget',
-                    style: AppTypography.bodyM(
-                      textSecondary,
-                    ).copyWith(fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // Ring chart centered
-              Center(
-                child: SegmentedRingChart(
-                  totalBudget: budget,
-                  fixedExpenses: fixed,
-                  variableSpent: spent * 30,
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Legend below chart (full width)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildLegendItem('Fixed', fixed, const Color(0xFF6B7280)),
-                  _buildLegendItem(
-                    'Variable',
-                    spent * 30,
-                    isDark
-                        ? AppColors.signalBlueDark
-                        : AppColors.signalBlueLight,
-                  ),
-                  _buildLegendItem(
-                    'Left',
-                    budget - fixed - (spent * 30),
-                    isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
-                  ),
-                ],
+              Icon(LucideIcons.pieChart, color: textSecondary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Monthly Budget',
+                style: AppTypography.bodyM(
+                  textSecondary,
+                ).copyWith(fontWeight: FontWeight.w500),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 24),
+          // Ring chart centered
+          Center(
+            child: SegmentedRingChart(
+              totalBudget: budget > 0 ? budget : 1,
+              fixedExpenses: fixed,
+              variableSpent: variableSpent,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Legend below chart (full width)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildLegendItem('Fixed', fixed, const Color(0xFF6B7280)),
+              _buildLegendItem(
+                'Variable',
+                variableSpent,
+                isDark ? AppColors.signalBlueDark : AppColors.signalBlueLight,
+              ),
+              _buildLegendItem(
+                'Left',
+                remaining.clamp(0, double.infinity),
+                isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -369,6 +376,17 @@ class InsightsScreen extends ConsumerWidget {
     Color textSecondary,
     Color surface,
   ) {
+    final safeSpendAsync = ref.watch(safeDailySpendProvider);
+    final topCategoryAsync = ref.watch(categorySpendingProvider);
+
+    // Determine budget status insight
+    final safeAmount = safeSpendAsync.asData?.value ?? 0.0;
+    final isOnTrack = safeAmount >= 0;
+
+    // Determine top category insight
+    final topCategory = topCategoryAsync.asData?.value;
+    final hasTopCategory = topCategory != null && topCategory.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -386,24 +404,33 @@ class InsightsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _buildInsightCard(
-          icon: LucideIcons.trendingDown,
-          title: 'Spending on track',
-          subtitle: 'You\'re within your daily budget today',
-          color: isDark
-              ? AppColors.insightPositiveDark
-              : AppColors.insightPositiveLight,
+          icon: isOnTrack
+              ? LucideIcons.trendingDown
+              : LucideIcons.alertTriangle,
+          title: isOnTrack ? 'Spending on track' : 'Over budget',
+          subtitle: isOnTrack
+              ? 'You can safely spend ₹${safeAmount.toStringAsFixed(0)}/day'
+              : 'You\'ve exceeded your budget by ₹${safeAmount.abs().toStringAsFixed(0)}/day',
+          color: isOnTrack
+              ? (isDark
+                    ? AppColors.insightPositiveDark
+                    : AppColors.insightPositiveLight)
+              : (isDark ? AppColors.signalRedDark : AppColors.signalRedLight),
           isDark: isDark,
         ),
-        const SizedBox(height: 12),
-        _buildInsightCard(
-          icon: LucideIcons.alertCircle,
-          title: 'Food spending up',
-          subtitle: 'You\'ve spent 15% more on food this week',
-          color: isDark
-              ? AppColors.insightWarningDark
-              : AppColors.insightWarningLight,
-          isDark: isDark,
-        ),
+        if (hasTopCategory) ...[
+          const SizedBox(height: 12),
+          _buildInsightCard(
+            icon: LucideIcons.alertCircle,
+            title: 'Top: ${topCategory.first.categoryName}',
+            subtitle:
+                '₹${topCategory.first.amount.toStringAsFixed(0)} spent on ${topCategory.first.categoryName.toLowerCase()} this month',
+            color: isDark
+                ? AppColors.insightWarningDark
+                : AppColors.insightWarningLight,
+            isDark: isDark,
+          ),
+        ],
       ],
     );
   }
