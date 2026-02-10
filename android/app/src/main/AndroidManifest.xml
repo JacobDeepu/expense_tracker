@@ -14,9 +14,9 @@
     </queries>
 
     <application
-        android:label="expense_tracker"
+        android:label="Mint Sync"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         
         <!-- Main Activity -->
         <activity
