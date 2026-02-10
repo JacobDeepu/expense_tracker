@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/category_icons.dart';
 import '../../../../data/local/database.dart';
+import '../../../../data/local/tables.dart';
 import '../../data/categories_repository.dart';
 import '../../data/transactions_repository.dart';
 
@@ -25,6 +26,7 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
   late TextEditingController _amountController;
   late TextEditingController _merchantController;
   Category? _selectedCategory;
+  late TransactionType _type;
   bool _initialized = false;
 
   @override
@@ -36,6 +38,7 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
     _merchantController = TextEditingController(
       text: widget.transaction.merchantName,
     );
+    _type = widget.transaction.type;
   }
 
   @override
@@ -78,9 +81,10 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
     final updated = widget.transaction.copyWith(
       amount: amount,
       merchantName: _merchantController.text.isEmpty
-          ? 'Cash Spend'
+          ? (_type == TransactionType.income ? 'Income' : 'Cash Spend')
           : _merchantController.text,
       categoryId: _selectedCategory!.id,
+      type: _type,
     );
 
     await ref.read(transactionsRepositoryProvider).updateTransaction(updated);
@@ -151,6 +155,12 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
         ? AppColors.surfaceSecondaryDark
         : AppColors.surfaceSecondaryLight;
     final border = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final signalGreen = isDark
+        ? AppColors.insightPositiveDark
+        : AppColors.insightPositiveLight;
+    final signalRed = isDark
+        ? AppColors.signalRedDark
+        : AppColors.signalRedLight;
 
     final categoriesAsync = ref.watch(categoriesListProvider);
 
@@ -175,12 +185,12 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 42, 8, 0),
+              padding: const EdgeInsets.fromLTRB(20, 24, 8, 0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Edit Expense',
+                    'Edit Transaction',
                     style: AppTypography.headingM(textPrimary),
                   ),
                   Row(
@@ -203,6 +213,68 @@ class _EditTransactionSheetState extends ConsumerState<EditTransactionSheet> {
                     ],
                   ),
                 ],
+              ),
+            ),
+
+            // Type Toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _type = TransactionType.expense),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _type == TransactionType.expense
+                                ? signalRed
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Expense',
+                            style: AppTypography.bodyM(
+                              _type == TransactionType.expense
+                                  ? Colors.white
+                                  : textSecondary,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _type = TransactionType.income),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _type == TransactionType.income
+                                ? signalGreen
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Income',
+                            style: AppTypography.bodyM(
+                              _type == TransactionType.income
+                                  ? Colors.white
+                                  : textSecondary,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 

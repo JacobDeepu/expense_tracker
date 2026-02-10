@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/category_icons.dart';
 import '../../../data/local/database.dart';
+import '../../../data/local/tables.dart';
 import '../data/transactions_repository.dart';
 import 'widgets/edit_transaction_sheet.dart';
 
@@ -188,8 +189,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     Color surface,
     Color border,
   ) {
-    // Calculate total for the day
-    final total = transactions.fold<double>(0, (sum, tx) => sum + tx.amount);
+    // Calculate net total for the day (Income - Expense)
+    final netTotal = transactions.fold<double>(0, (sum, tx) {
+      if (tx.type == TransactionType.income) return sum + tx.amount;
+      return sum - tx.amount;
+    });
+
+    final isPositive = netTotal >= 0;
+    final signalGreen = isDark
+        ? AppColors.insightPositiveDark
+        : AppColors.insightPositiveLight;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,9 +213,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 style: AppTypography.captionUppercase(textSecondary),
               ),
               Text(
-                '-₹${total.toStringAsFixed(0)}',
+                '${isPositive ? '+' : '-'}₹${netTotal.abs().toStringAsFixed(0)}',
                 style: AppTypography.bodyMTabular(
-                  textSecondary,
+                  isPositive ? signalGreen : textSecondary,
                 ).copyWith(fontWeight: FontWeight.w500),
               ),
             ],
@@ -305,9 +314,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ),
             Text(
-              '-₹${tx.amount.toStringAsFixed(0)}',
+              '${tx.type == TransactionType.income ? '+' : '-'}₹${tx.amount.toStringAsFixed(0)}',
               style: AppTypography.bodyMTabular(
-                textPrimary,
+                tx.type == TransactionType.income
+                    ? (isDark
+                          ? AppColors.insightPositiveDark
+                          : AppColors.insightPositiveLight)
+                    : textPrimary,
               ).copyWith(fontWeight: FontWeight.w600),
             ),
           ],
