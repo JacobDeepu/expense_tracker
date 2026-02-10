@@ -8,8 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/category_icons.dart';
 import '../../../core/widgets/expandable_fab.dart';
+import '../../../data/local/tables.dart';
 import '../providers/dashboard_providers.dart';
 import '../providers/top_categories_provider.dart';
+import '../widgets/recurring_payments_card.dart';
 import '../widgets/top_categories_card.dart';
 import '../../transactions/presentation/widgets/edit_transaction_sheet.dart';
 
@@ -36,9 +38,8 @@ class DashboardScreen extends ConsumerWidget {
         : AppColors.insightPositiveLight;
 
     // Watch providers
-    final dailyLimitAsync = ref.watch(dailyLimitProvider);
+    final safeSpendAsync = ref.watch(safeDailySpendProvider);
     final budgetUsageAsync = ref.watch(budgetUsageProvider);
-    final spentTodayAsync = ref.watch(spentTodayProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
     final topCategoriesAsync = ref.watch(topCategoriesProvider);
 
@@ -88,9 +89,9 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 28),
 
               // Main Balance Card
-              dailyLimitAsync.when(
-                data: (limit) {
-                  final isPositive = limit >= 0;
+              safeSpendAsync.when(
+                data: (safeAmount) {
+                  final isPositive = safeAmount >= 0;
                   final accentColor = isPositive ? signalGreen : signalRed;
 
                   return Container(
@@ -121,14 +122,14 @@ class DashboardScreen extends ConsumerWidget {
                           children: [
                             Icon(
                               isPositive
-                                  ? LucideIcons.trendingUp
-                                  : LucideIcons.trendingDown,
+                                  ? LucideIcons.checkCircle
+                                  : LucideIcons.alertTriangle,
                               color: Colors.white.withValues(alpha: 0.8),
                               size: 18,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              isPositive ? 'Available Today' : 'Over Budget',
+                              isPositive ? 'Safe Daily Spend' : 'Over Budget',
                               style: AppTypography.bodyM(
                                 Colors.white.withValues(alpha: 0.9),
                               ),
@@ -137,7 +138,7 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          '₹${limit.abs().toStringAsFixed(0)}',
+                          '₹${safeAmount.abs().toStringAsFixed(0)}',
                           style: AppTypography.displayXLTabular(
                             Colors.white,
                           ).copyWith(fontSize: 44),
@@ -166,16 +167,20 @@ class DashboardScreen extends ConsumerWidget {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    spentTodayAsync.when(
-                                      data: (spent) => Text(
-                                        '₹${spent.toStringAsFixed(0)} spent',
-                                        style: AppTypography.caption(
-                                          Colors.white.withValues(alpha: 0.8),
+                                    ref
+                                        .watch(monthlyExpensesProvider)
+                                        .when(
+                                          data: (spent) => Text(
+                                            '₹${spent.toStringAsFixed(0)} spent this month',
+                                            style: AppTypography.caption(
+                                              Colors.white.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ),
+                                          ),
+                                          loading: () => const SizedBox(),
+                                          error: (e, s) => const SizedBox(),
                                         ),
-                                      ),
-                                      loading: () => const SizedBox(),
-                                      error: (e, s) => const SizedBox(),
-                                    ),
                                     Text(
                                       '${(usage * 100).toInt()}% used',
                                       style: AppTypography.caption(
@@ -199,6 +204,9 @@ class DashboardScreen extends ConsumerWidget {
               ),
 
               const SizedBox(height: 16),
+
+              // Upcoming Bills
+              const RecurringPaymentsCard(),
 
               // Top Categories
               topCategoriesAsync.when(
@@ -345,7 +353,10 @@ class DashboardScreen extends ConsumerWidget {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            'Expense',
+                                            transaction.type ==
+                                                    TransactionType.income
+                                                ? 'Income'
+                                                : 'Expense',
                                             style: AppTypography.caption(
                                               textSecondary,
                                             ),
@@ -354,9 +365,12 @@ class DashboardScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     Text(
-                                      '-₹${transaction.amount.toStringAsFixed(0)}',
+                                      '${transaction.type == TransactionType.income ? '+' : '-'}₹${transaction.amount.toStringAsFixed(0)}',
                                       style: AppTypography.bodyMTabular(
-                                        textPrimary,
+                                        transaction.type ==
+                                                TransactionType.income
+                                            ? signalGreen
+                                            : textPrimary,
                                       ).copyWith(fontWeight: FontWeight.w600),
                                     ),
                                   ],

@@ -6,20 +6,22 @@ import '../../../core/services/preferences_service.dart';
 
 // REPLACED: MockDataService with Real Repository
 
-/// Provider for Daily Base Budget (Fixed per day)
-/// Formula: (Monthly Budget - Recurring Expenses) / 30
-final dailyBaseBudgetProvider = FutureProvider<double>((ref) async {
+/// Provider for Monthly Budget Goal
+final monthlyBudgetProvider = FutureProvider<double>((ref) async {
   final prefs = ref.watch(preferencesServiceProvider);
-  final monthlyBudget = await prefs.getMonthlyBudget() ?? 0.0;
-  
-  final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
-  final recurringTotal = await recurringRepo.getTotalMonthlyAmount();
+  return await prefs.getMonthlyBudget() ?? 0.0;
+});
 
-  final disposableIncome = monthlyBudget - recurringTotal;
-  // If negative disposable income, default to 0
-  if (disposableIncome <= 0) return 0.0;
+/// Provider for total monthly income
+final monthlyIncomeProvider = StreamProvider<double>((ref) {
+  final repository = ref.watch(transactionsRepositoryProvider);
+  return repository.watchMonthlyIncome();
+});
 
-  return disposableIncome / 30; // Simple average for MVP
+/// Provider for total monthly expenses
+final monthlyExpensesProvider = StreamProvider<double>((ref) {
+  final repository = ref.watch(transactionsRepositoryProvider);
+  return repository.watchMonthlyExpenses();
 });
 
 /// Provider for spent today
@@ -28,37 +30,62 @@ final spentTodayProvider = StreamProvider<double>((ref) {
   return repository.watchSpentToday();
 });
 
-/// Provider for "Safe to Spend" (Remaining Today)
-/// Formula: Daily Base Budget - Spent Today
-final dailyLimitProvider = Provider<AsyncValue<double>>((ref) {
-  final baseBudgetAsync = ref.watch(dailyBaseBudgetProvider);
-  final spentTodayAsync = ref.watch(spentTodayProvider);
-
-  if (baseBudgetAsync.isLoading || spentTodayAsync.isLoading) {
-    return const AsyncLoading();
-  }
-
-  final baseBudget = baseBudgetAsync.asData?.value ?? 0.0;
-  final spentToday = spentTodayAsync.asData?.value ?? 0.0;
-
-  return AsyncData(baseBudget - spentToday);
+/// Provider for active recurring expenses total
+final activeRecurringTotalProvider = FutureProvider<double>((ref) async {
+  final repository = ref.watch(recurringRulesRepositoryProvider);
+  return await repository.getTotalMonthlyAmount();
 });
 
-/// Provider for budget usage percentage (0.0 to 1.0)
-final budgetUsageProvider = Provider<AsyncValue<double>>((ref) {
-  final baseBudgetAsync = ref.watch(dailyBaseBudgetProvider);
-  final spentTodayAsync = ref.watch(spentTodayProvider);
+/// Provider for "Safe Daily Spend"
+/// Formula: (Budget + Income - Committed Recurring - Spent Variable) / Days Remaining
+final safeDailySpendProvider = Provider<AsyncValue<double>>((ref) {
+  final budgetAsync = ref.watch(monthlyBudgetProvider);
+  final incomeAsync = ref.watch(monthlyIncomeProvider);
+  final expensesAsync = ref.watch(monthlyExpensesProvider);
+  final recurringAsync = ref.watch(activeRecurringTotalProvider);
 
-  if (baseBudgetAsync.isLoading || spentTodayAsync.isLoading) {
+  if (budgetAsync.isLoading ||
+      incomeAsync.isLoading ||
+      expensesAsync.isLoading ||
+      recurringAsync.isLoading) {
     return const AsyncLoading();
   }
 
-  final baseBudget = baseBudgetAsync.asData?.value ?? 1.0; // Avoid div by zero
-  final spentToday = spentTodayAsync.asData?.value ?? 0.0;
+  final budget = budgetAsync.asData?.value ?? 0.0;
+  final income = incomeAsync.asData?.value ?? 0.0;
+  final expenses = expensesAsync.asData?.value ?? 0.0;
+  final recurring = recurringAsync.asData?.value ?? 0.0;
 
-  if (baseBudget == 0) return const AsyncData(1.0); // 100% used if no budget
+  // Safe to Spend = (Total Pot - Recurring Committed - Spent So Far)
+  final available = (budget + income) - recurring - expenses;
 
-  return AsyncData((spentToday / baseBudget).clamp(0.0, 1.0));
+  // Calculate days remaining in month (inclusive of today)
+  final now = DateTime.now();
+  final lastDayOfMonth = DateTime(now.year, now.month + 1, 0).day;
+  final daysRemaining = (lastDayOfMonth - now.day + 1).clamp(1, 31);
+
+  return AsyncData(available / daysRemaining);
+});
+
+/// Provider for budget usage percentage (for the ring chart)
+final budgetUsageProvider = Provider<AsyncValue<double>>((ref) {
+  final budgetAsync = ref.watch(monthlyBudgetProvider);
+  final incomeAsync = ref.watch(monthlyIncomeProvider);
+  final expensesAsync = ref.watch(monthlyExpensesProvider);
+
+  if (budgetAsync.isLoading ||
+      incomeAsync.isLoading ||
+      expensesAsync.isLoading) {
+    return const AsyncLoading();
+  }
+
+  final totalBudget =
+      (budgetAsync.asData?.value ?? 0.0) + (incomeAsync.asData?.value ?? 0.0);
+  final spent = expensesAsync.asData?.value ?? 0.0;
+
+  if (totalBudget <= 0) return const AsyncData(0.0);
+
+  return AsyncData((spent / totalBudget).clamp(0.0, 1.0));
 });
 
 /// Provider for recent transactions (last 20)
@@ -66,4 +93,20 @@ final budgetUsageProvider = Provider<AsyncValue<double>>((ref) {
 final recentTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final repository = ref.watch(transactionsRepositoryProvider);
   return repository.watchRecentTransactions();
+});
+
+/// Provider for unpaid recurring rules this month
+final unpaidRecurringRulesProvider = StreamProvider<List<RecurringRule>>((ref) {
+  final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
+  final transactionsRepo = ref.watch(transactionsRepositoryProvider);
+
+  final allRulesStream = recurringRepo.watchAllRules();
+  final paidIdsStream = transactionsRepo.watchPaidRecurringRuleIds(
+    DateTime.now(),
+  );
+
+  return allRulesStream.asyncMap((rules) async {
+    final paidIds = await paidIdsStream.first;
+    return rules.where((r) => r.active && !paidIds.contains(r.id)).toList();
+  });
 });
