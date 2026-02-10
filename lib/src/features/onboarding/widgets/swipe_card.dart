@@ -151,8 +151,8 @@ class SwipeCard extends StatelessWidget {
       onTap: onCardUpdated != null ? () => _showEditDialog(context) : null,
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-        padding: const EdgeInsets.all(32),
+        // Removed excessive margin as parent CardSwiper handles spacing
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(4),
@@ -164,58 +164,60 @@ class SwipeCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Category label
-            Text(
-              card.category.toUpperCase(),
-              style: AppTypography.captionUppercase(cardTextSecondary),
-            ),
-            const SizedBox(height: 16),
-
-            // Card name
-            Text(card.name, style: AppTypography.displayL(cardTextPrimary)),
-            const SizedBox(height: 24),
-
-            // Estimated amount with frequency
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  card.formattedAmount,
-                  style: AppTypography.headingM(cardTextPrimary),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  card.frequency.suffix,
-                  style: AppTypography.bodyM(cardTextSecondary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Description
-            if (card.description != null)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category label
               Text(
-                card.description!,
-                style: AppTypography.bodyM(cardTextSecondary),
+                card.category.toUpperCase(),
+                style: AppTypography.captionUppercase(cardTextSecondary),
               ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
+              // Card name
+              Text(card.name, style: AppTypography.displayL(cardTextPrimary)),
+              const SizedBox(height: 24),
 
-            // Edit hint
-            if (onCardUpdated != null)
+              // Estimated amount with frequency
               Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Icon(Icons.touch_app_outlined, size: 16, color: accent),
-                  const SizedBox(width: 6),
-                  Text('Tap to edit', style: AppTypography.caption(accent)),
+                  Text(
+                    card.formattedAmount,
+                    style: AppTypography.headingM(cardTextPrimary),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    card.frequency.suffix,
+                    style: AppTypography.bodyM(cardTextSecondary),
+                  ),
                 ],
               ),
-          ],
+              const SizedBox(height: 8),
+
+              // Description
+              if (card.description != null)
+                Text(
+                  card.description!,
+                  style: AppTypography.bodyM(cardTextSecondary),
+                ),
+
+              const SizedBox(height: 16),
+
+              // Edit hint
+              if (onCardUpdated != null)
+                Row(
+                  children: [
+                    Icon(Icons.touch_app_outlined, size: 16, color: accent),
+                    const SizedBox(width: 6),
+                    Text('Tap to edit', style: AppTypography.caption(accent)),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );

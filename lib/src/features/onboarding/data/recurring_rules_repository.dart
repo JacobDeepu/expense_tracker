@@ -55,6 +55,9 @@ class RecurringRulesRepository {
     required String name,
     required double amount,
     required int frequencyDays,
+    int? dueDate,
+    bool isVariable = false,
+    bool active = true,
     int? categoryId,
   }) {
     return _db
@@ -64,6 +67,9 @@ class RecurringRulesRepository {
             name: Value(name),
             estimatedAmount: Value(amount),
             frequencyDays: Value(frequencyDays),
+            dueDate: Value(dueDate),
+            isVariable: Value(isVariable),
+            active: Value(active),
             categoryId: Value(categoryId),
           ),
         );
@@ -75,6 +81,9 @@ class RecurringRulesRepository {
     String? name,
     double? amount,
     int? frequencyDays,
+    int? dueDate,
+    bool? isVariable,
+    bool? active,
     int? categoryId,
   }) {
     return (_db.update(_db.recurringRules)..where((r) => r.id.equals(id)))
@@ -87,6 +96,11 @@ class RecurringRulesRepository {
             frequencyDays: frequencyDays != null
                 ? Value(frequencyDays)
                 : const Value.absent(),
+            dueDate: dueDate != null ? Value(dueDate) : const Value.absent(),
+            isVariable: isVariable != null
+                ? Value(isVariable)
+                : const Value.absent(),
+            active: active != null ? Value(active) : const Value.absent(),
             categoryId: categoryId != null
                 ? Value(categoryId)
                 : const Value.absent(),
@@ -105,7 +119,7 @@ class RecurringRulesRepository {
   /// Get total monthly recurring expenses (normalized to monthly)
   Future<double> getTotalMonthlyAmount() async {
     final rules = await getAllRules();
-    return rules.fold<double>(0.0, (sum, rule) {
+    return rules.where((r) => r.active).fold<double>(0.0, (sum, rule) {
       // Normalize to monthly: (amount / frequencyDays) * 30
       final monthly = (rule.estimatedAmount / rule.frequencyDays) * 30;
       return sum + monthly;
