@@ -125,6 +125,16 @@ class RecurringRulesRepository {
       return sum + monthly;
     });
   }
+
+  /// Watch total monthly recurring expenses (reactive stream)
+  Stream<double> watchTotalMonthlyAmount() {
+    return watchAllRules().map((rules) {
+      return rules.where((r) => r.active).fold<double>(0.0, (sum, rule) {
+        final monthly = (rule.estimatedAmount / rule.frequencyDays) * 30;
+        return sum + monthly;
+      });
+    });
+  }
 }
 
 final recurringRulesRepositoryProvider = Provider<RecurringRulesRepository>((
