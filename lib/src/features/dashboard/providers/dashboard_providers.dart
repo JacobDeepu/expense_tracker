@@ -4,8 +4,6 @@ import '../../../data/local/database.dart';
 import '../../onboarding/data/recurring_rules_repository.dart';
 import '../../../core/services/preferences_service.dart';
 
-// REPLACED: MockDataService with Real Repository
-
 /// Provider for Monthly Budget Goal
 final monthlyBudgetProvider = FutureProvider<double>((ref) async {
   final prefs = ref.watch(preferencesServiceProvider);
@@ -30,10 +28,10 @@ final spentTodayProvider = StreamProvider<double>((ref) {
   return repository.watchSpentToday();
 });
 
-/// Provider for active recurring expenses total
-final activeRecurringTotalProvider = FutureProvider<double>((ref) async {
+/// Provider for active recurring expenses total (reactive)
+final activeRecurringTotalProvider = StreamProvider<double>((ref) {
   final repository = ref.watch(recurringRulesRepositoryProvider);
-  return await repository.getTotalMonthlyAmount();
+  return repository.watchTotalMonthlyAmount();
 });
 
 /// Provider for "Safe Daily Spend"
@@ -89,24 +87,41 @@ final budgetUsageProvider = Provider<AsyncValue<double>>((ref) {
 });
 
 /// Provider for recent transactions (last 20)
-// This connects to the real Drift Database via Repository
 final recentTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final repository = ref.watch(transactionsRepositoryProvider);
   return repository.watchRecentTransactions();
 });
 
-/// Provider for unpaid recurring rules this month
-final unpaidRecurringRulesProvider = StreamProvider<List<RecurringRule>>((ref) {
-  final recurringRepo = ref.watch(recurringRulesRepositoryProvider);
+/// Provider for paid recurring rule IDs this month (reactive)
+final paidRecurringIdsProvider = StreamProvider<Set<int>>((ref) {
   final transactionsRepo = ref.watch(transactionsRepositoryProvider);
+  return transactionsRepo.watchPaidRecurringRuleIds(DateTime.now());
+});
 
-  final allRulesStream = recurringRepo.watchAllRules();
-  final paidIdsStream = transactionsRepo.watchPaidRecurringRuleIds(
-    DateTime.now(),
-  );
+/// Provider for unpaid recurring rules this month
+/// Reacts to BOTH rule changes AND new transactions (bill payments)
+final unpaidRecurringRulesProvider = Provider<AsyncValue<List<RecurringRule>>>((
+  ref,
+) {
+  final rulesAsync = ref.watch(recurringRulesProvider);
+  final paidIdsAsync = ref.watch(paidRecurringIdsProvider);
 
-  return allRulesStream.asyncMap((rules) async {
-    final paidIds = await paidIdsStream.first;
-    return rules.where((r) => r.active && !paidIds.contains(r.id)).toList();
-  });
+  if (rulesAsync.isLoading || paidIdsAsync.isLoading) {
+    return const AsyncLoading();
+  }
+
+  if (rulesAsync.hasError) {
+    return AsyncError(rulesAsync.error!, StackTrace.current);
+  }
+  if (paidIdsAsync.hasError) {
+    return AsyncError(paidIdsAsync.error!, StackTrace.current);
+  }
+
+  final rules = rulesAsync.asData?.value ?? [];
+  final paidIds = paidIdsAsync.asData?.value ?? {};
+
+  final unpaid = rules
+      .where((r) => r.active && !paidIds.contains(r.id))
+      .toList();
+  return AsyncData(unpaid);
 });
